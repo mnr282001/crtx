@@ -20,19 +20,14 @@ from app.db.vector_store import get_index
 def get_openai_client():
     return OpenAI()
 
-async def ingest_pdf(file):
+async def ingest_pdf(file, namespace: str = ""):
 
     pdf_bytes = await file.read()
     fileName = os.path.basename(file.filename)
 
-    # Step 7
     text = extract_pdf_text(pdf_bytes)
-
-    # Step 8
     chunks = chunk_text(text)
-
-    # Step 9 + 10
-    store_chunks(chunks, fileName)
+    store_chunks(chunks, fileName, namespace=namespace)
 
     return {
         "message": "Document ingested successfully",
@@ -52,14 +47,6 @@ def extract_pdf_text(pdf_bytes):
         text += page.get_text()
 
     return text
-
-def chunk_documents(text):
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
-    )
-
-    chunks = splitter.split_text(text)
 
 def chunk_text(text):
 
@@ -113,7 +100,7 @@ def raise_pinecone_http_error(error: PineconeApiException):
     ) from error
 
 
-def store_chunks(chunks, fileName):
+def store_chunks(chunks, fileName, namespace: str = ""):
     index = get_index()
 
     embeddings = OpenAIEmbeddings(
@@ -126,10 +113,11 @@ def store_chunks(chunks, fileName):
     except OpenAIError as error:
         raise_openai_http_error(error)
 
+    prefix = f"{namespace}-" if namespace else ""
     vectors = []
     for i, (chunk, embedding) in enumerate(zip(chunks, chunk_embeddings)):
         vectors.append({
-            "id": f"chunk-{i}",
+            "id": f"{prefix}chunk-{i}",
             "values": embedding,
             "metadata": {
                 "text": chunk,
@@ -138,12 +126,16 @@ def store_chunks(chunks, fileName):
             }
         })
 
+    kwargs = {"vectors": vectors}
+    if namespace:
+        kwargs["namespace"] = namespace
+
     try:
-        index.upsert(vectors=vectors)
+        index.upsert(**kwargs)
     except PineconeApiException as error:
         raise_pinecone_http_error(error)
 
-def ask_question(question: str):
+def ask_question(question: str, namespace: str = ""):
     index = get_index()
 
     embeddings = OpenAIEmbeddings(
@@ -156,12 +148,16 @@ def ask_question(question: str):
     except OpenAIError as error:
         raise_openai_http_error(error)
 
+    query_kwargs = {
+        "vector": question_embedding,
+        "top_k": TOP_K,
+        "include_metadata": True,
+    }
+    if namespace:
+        query_kwargs["namespace"] = namespace
+
     try:
-        results = index.query(
-            vector=question_embedding,
-            top_k=TOP_K,
-            include_metadata=True
-        )
+        results = index.query(**query_kwargs)
     except PineconeApiException as error:
         raise_pinecone_http_error(error)
 
