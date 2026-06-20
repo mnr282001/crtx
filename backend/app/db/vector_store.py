@@ -3,7 +3,10 @@ from app.config import (
     PINECONE_API_KEY,
     PINECONE_INDEX
 )
+from functools import lru_cache
 
-pc = Pinecone(api_key=PINECONE_API_KEY)
 
-index = pc.Index(PINECONE_INDEX)
+@lru_cache
+def get_index():
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+    return pc.Index(PINECONE_INDEX)

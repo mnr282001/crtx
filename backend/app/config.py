@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
 import os
+from pathlib import Path
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")

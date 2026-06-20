@@ -3,10 +3,13 @@ from langchain.text_splitter import (
     RecursiveCharacterTextSplitter
 )
 from langchain_openai import OpenAIEmbeddings
-from app.db.vector_store import index
+from app.db.vector_store import get_index
 
 from openai import OpenAI
-client = OpenAI()
+
+
+def get_openai_client():
+    return OpenAI()
 
 async def ingest_pdf(file):
 
@@ -77,6 +80,7 @@ def store_chunks(chunks):
             }
         })
 
+    index = get_index()
     index.upsert(vectors=vectors)
 
 def ask_question(question: str):
@@ -87,6 +91,7 @@ def ask_question(question: str):
 
     question_embedding = embeddings.embed_query(question)
 
+    index = get_index()
     results = index.query(
         vector=question_embedding,
         top_k=5,
@@ -98,6 +103,7 @@ def ask_question(question: str):
         for match in results["matches"]
     )
 
+    client = get_openai_client()
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
