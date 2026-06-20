@@ -1,4 +1,5 @@
 import fitz
+import os
 from fastapi import HTTPException
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter
@@ -22,6 +23,7 @@ def get_openai_client():
 async def ingest_pdf(file):
 
     pdf_bytes = await file.read()
+    fileName = os.path.basename(file.filename)
 
     # Step 7
     text = extract_pdf_text(pdf_bytes)
@@ -30,7 +32,7 @@ async def ingest_pdf(file):
     chunks = chunk_text(text)
 
     # Step 9 + 10
-    store_chunks(chunks)
+    store_chunks(chunks, fileName)
 
     return {
         "message": "Document ingested successfully",
@@ -111,7 +113,7 @@ def raise_pinecone_http_error(error: PineconeApiException):
     ) from error
 
 
-def store_chunks(chunks):
+def store_chunks(chunks, fileName):
     index = get_index()
 
     embeddings = OpenAIEmbeddings(
@@ -130,7 +132,9 @@ def store_chunks(chunks):
             "id": f"chunk-{i}",
             "values": embedding,
             "metadata": {
-                "text": chunk
+                "text": chunk,
+                "source": fileName,
+                "chunk_index": i
             }
         })
 
@@ -197,9 +201,11 @@ def ask_question(question: str):
         "answer": response.choices[0].message.content,
         "sources": [
             {
+                "source": match["metadata"].get("source"),
+                "chunk_index": match["metadata"].get("chunk_index"),
                 "text": match["metadata"]["text"],
                 "score": match["score"]
             }
-            for match in results["matches"]
+        for match in results["matches"]
         ]
     }
