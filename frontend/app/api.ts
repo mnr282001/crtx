@@ -1,3 +1,5 @@
+import type { PipelineConfigValue } from "./components/PipelineConfig";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export async function ingestPdf(file: File, collectionId = "") {
@@ -11,11 +13,15 @@ export async function ingestPdf(file: File, collectionId = "") {
   return res.json();
 }
 
-export async function queryQuestion(question: string, collectionId = "") {
+export async function queryQuestion(
+  question: string,
+  collectionId = "",
+  pipeline = ""
+) {
   const res = await fetch(`${BASE_URL}/query/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, collection_id: collectionId }),
+    body: JSON.stringify({ question, collection_id: collectionId, pipeline }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -39,6 +45,25 @@ export async function createCollection(name: string) {
 
 export async function deleteCollection(id: string) {
   const res = await fetch(`${BASE_URL}/collections/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getCollectionConfig(collectionId: string): Promise<PipelineConfigValue> {
+  const res = await fetch(`${BASE_URL}/collections/${collectionId}/config`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function updateCollectionConfig(
+  collectionId: string,
+  config: PipelineConfigValue
+): Promise<PipelineConfigValue> {
+  const res = await fetch(`${BASE_URL}/collections/${collectionId}/config`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
