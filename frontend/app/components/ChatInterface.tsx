@@ -52,7 +52,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
     }
 
     try {
-      const result = await queryQuestion(q, collectionId);
+      const result = await queryQuestion(q, collectionId, pipeline);
       setMessages((prev) => [
         ...prev,
         {
