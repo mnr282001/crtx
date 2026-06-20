@@ -25,7 +25,7 @@ interface Message {
   isError?: boolean;
 }
 
-export default function ChatInterface() {
+export default function ChatInterface({ collectionId = "" }: { collectionId?: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -52,7 +52,7 @@ export default function ChatInterface() {
     }
 
     try {
-      const result = await queryQuestion(q);
+      const result = await queryQuestion(q, collectionId);
       setMessages((prev) => [
         ...prev,
         {

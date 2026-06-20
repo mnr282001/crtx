@@ -20,9 +20,10 @@ interface FileEntry {
 
 interface UploadZoneProps {
   onIngested?: () => void;
+  collectionId?: string;
 }
 
-export default function UploadZone({ onIngested }: UploadZoneProps) {
+export default function UploadZone({ onIngested, collectionId = "" }: UploadZoneProps) {
   const [dragging, setDragging] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,7 +53,7 @@ export default function UploadZone({ onIngested }: UploadZoneProps) {
         }, 180);
 
         try {
-          const result = await ingestPdf(entry.file);
+          const result = await ingestPdf(entry.file, collectionId);
           clearInterval(tick);
           setFiles((prev) =>
             prev.map((f) =>
@@ -80,7 +81,7 @@ export default function UploadZone({ onIngested }: UploadZoneProps) {
         }
       }
     },
-    [onIngested]
+    [onIngested, collectionId]
   );
 
   const onDragOver = (e: DragEvent) => {
