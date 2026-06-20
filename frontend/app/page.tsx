@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useCollections } from "./context/collections";
 import UploadZone from "./components/UploadZone";
 import ChatInterface from "./components/ChatInterface";
+import PipelineConfig from "./components/PipelineConfig";
 
 export default function Home() {
   const [tab, setTab] = useState<"docs" | "chat">("chat");
-  const { activeId } = useCollections();
+  const { activeId, pipelineConfig, savePipelineConfig, configSaving } = useCollections();
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-950 text-zinc-100 min-h-0">
@@ -59,6 +60,12 @@ export default function Home() {
               collectionId={activeId}
             />
           </div>
+
+          <PipelineConfig
+            config={pipelineConfig}
+            saving={configSaving}
+            onChange={savePipelineConfig}
+          />
         </aside>
 
         {/* Main — chat */}
@@ -70,7 +77,10 @@ export default function Home() {
             "md:flex",
           ].join(" ")}
         >
-          <ChatInterface collectionId={activeId} />
+          <ChatInterface
+            collectionId={activeId}
+            pipeline={pipelineConfig.engine}
+          />
         </main>
       </div>
     </div>
