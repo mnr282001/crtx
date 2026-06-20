@@ -75,3 +75,17 @@ def store_chunks(chunks):
         })
 
     index.upsert(vectors=vectors)
+
+def ask_question(question: str):
+
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-3-small"
+    )
+
+    question_embedding = embeddings.embed_query(question)
+
+    results = index.query(
+        vector=question_embedding,
+        top_k=5,
+        include_metadata=True
+    )
