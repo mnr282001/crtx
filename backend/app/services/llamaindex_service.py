@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import HTTPException
 from pinecone import Pinecone
 
@@ -10,7 +12,7 @@ from app.config import (
 )
 
 
-def ask_question_llamaindex(question: str, namespace: str = "", config: dict | None = None) -> dict:
+def ask_question_llamaindex(question: str, namespace: str = "", config: Optional[dict] = None) -> dict:
     try:
         from llama_index.core import Settings, VectorStoreIndex
         from llama_index.embeddings.openai import OpenAIEmbedding

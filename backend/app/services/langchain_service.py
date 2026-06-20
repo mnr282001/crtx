@@ -1,3 +1,5 @@
+from typing import Optional
+
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -72,7 +74,7 @@ def _apply_mmr(matches: list, query_vec: list, top_k: int, lambda_mult: float = 
     norms = np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-8
     vecs_norm = vecs / norms
 
-    selected: list[int] = []
+    selected = []  # type: list
     remaining = list(range(len(matches)))
 
     while len(selected) < top_k and remaining:
@@ -95,7 +97,7 @@ def _apply_mmr(matches: list, query_vec: list, top_k: int, lambda_mult: float = 
     return [matches[i] for i in selected]
 
 
-def ask_question_langchain(question: str, namespace: str = "", config: dict | None = None) -> dict:
+def ask_question_langchain(question: str, namespace: str = "", config: Optional[dict] = None) -> dict:
     config = config or {}
     retrieval_strategy = config.get("retrieval_strategy", "similarity")
     top_k = config.get("top_k", TOP_K)
