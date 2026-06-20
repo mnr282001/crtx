@@ -5,6 +5,7 @@ from app.config import (
 )
 
 from app.routers import (
+    collections,
     ingest,
     query
 )
@@ -16,6 +17,11 @@ app.add_middleware(
     allow_origins=[LOCAL_API_URL],
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+app.include_router(
+    collections.router,
+    prefix="/collections"
 )
 
 app.include_router(
