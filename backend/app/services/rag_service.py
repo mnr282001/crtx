@@ -45,6 +45,16 @@ def chunk_documents(text):
 
     chunks = splitter.split_text(text)
 
+def chunk_text(text):
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
+
+    return splitter.split_text(text)
+
+
 def store_chunks(chunks):
     embeddings = OpenAIEmbeddings(
         model="text-embedding-3-small"
