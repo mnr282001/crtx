@@ -1,4 +1,8 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from config import (
+    LOCAL_API_URL
+)
 
 from app.routers import (
     ingest,
@@ -6,6 +10,13 @@ from app.routers import (
 )
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[LOCAL_API_URL],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(
     ingest.router,
