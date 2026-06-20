@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from config import (
+from app.config import (
     LOCAL_API_URL
 )
 
