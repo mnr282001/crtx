@@ -5,6 +5,9 @@ from langchain.text_splitter import (
 from langchain_openai import OpenAIEmbeddings
 from app.db.vector_store import index
 
+from openai import OpenAI
+client = OpenAI()
+
 async def ingest_pdf(file):
 
     pdf_bytes = await file.read()
@@ -94,3 +97,37 @@ def ask_question(question: str):
         match["metadata"]["text"]
         for match in results["matches"]
     )
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Answer the user's question only "
+                    "using the provided context."
+                )
+            },
+            {
+                "role": "user",
+                "content": f"""
+                Context:
+                {context}
+
+                Question:
+                {question}
+                """
+            }
+        ]
+    )
+    
+    return {
+        "answer": response.choices[0].message.content,
+        "sources": [
+            {
+                "text": match["metadata"]["text"],
+                "score": match["score"]
+            }
+            for match in results["matches"]
+        ]
+    }
