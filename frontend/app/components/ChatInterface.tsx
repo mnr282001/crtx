@@ -25,7 +25,7 @@ interface Message {
   isError?: boolean;
 }
 
-export default function ChatInterface({ collectionId = "" }: { collectionId?: string }) {
+export default function ChatInterface({ collectionId = "", pipeline = "" }: { collectionId?: string; pipeline?: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
