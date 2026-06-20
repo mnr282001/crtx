@@ -89,3 +89,8 @@ def ask_question(question: str):
         top_k=5,
         include_metadata=True
     )
+
+    context = "\n\n".join(
+        match["metadata"]["text"]
+        for match in results["matches"]
+    )
