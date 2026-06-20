@@ -107,7 +107,7 @@ export default function UploadZone({ onIngested }: UploadZoneProps) {
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={[
-          "relative cursor-pointer border border-dashed p-8 flex flex-col items-center justify-center gap-3 select-none transition-all duration-150",
+          "relative cursor-pointer border border-dashed p-6 sm:p-8 flex flex-col items-center justify-center gap-3 select-none transition-all duration-150",
           dragging
             ? "border-amber-500 bg-amber-500/5 shadow-[inset_0_0_40px_rgba(245,158,11,0.06)]"
             : "border-zinc-700 bg-zinc-900/40 hover:border-zinc-500",
