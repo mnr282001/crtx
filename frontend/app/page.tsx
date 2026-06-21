@@ -7,15 +7,22 @@ import UploadZone from "./components/UploadZone";
 import ChatInterface from "./components/ChatInterface";
 import PipelineConfig from "./components/PipelineConfig";
 import DocumentList from "./components/DocumentList";
+import LandingPage from "./landing/LandingPage";
 
 export default function Home() {
   const [tab, setTab] = useState<"docs" | "chat">("chat");
   const [refreshKey, setRefreshKey] = useState(0);
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { activeId, collections, pipelineConfig, savePipelineConfig, configSaving } = useCollections();
   const activeCollection = collections.find((c) => c.id === activeId);
   const canIngest = !activeCollection || !activeCollection.shared || activeCollection.permission === "ingest";
   const isAdmin = user?.app_metadata?.is_admin === true;
+
+  // Blank while resolving auth to avoid layout flash
+  if (loading) return <div className="flex-1 bg-zinc-950" />;
+
+  // Show landing page for unauthenticated visitors
+  if (!user) return <LandingPage />;
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-950 text-zinc-100 min-h-0">

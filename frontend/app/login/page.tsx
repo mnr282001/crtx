@@ -8,7 +8,7 @@ function LoginForm() {
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") ?? "/collections";
+  const redirectTo = searchParams.get("redirect") ?? "/";
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");

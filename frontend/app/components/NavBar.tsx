@@ -56,10 +56,12 @@ export default function NavBar() {
             </button>
           </>
         ) : (
-          <>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-mono text-zinc-600">ready</span>
-          </>
+          <Link
+            href="/login"
+            className="text-xs font-mono text-zinc-400 hover:text-zinc-100 uppercase tracking-[0.12em] transition-colors"
+          >
+            Sign in →
+          </Link>
         )}
       </div>
     </header>
