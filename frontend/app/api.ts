@@ -33,12 +33,13 @@ export async function ingestUrl(url: string, collectionId = "") {
 export async function queryQuestion(
   question: string,
   collectionId = "",
-  pipeline = ""
+  pipeline = "",
+  sessionId = ""
 ) {
   const res = await fetch(`${BASE_URL}/query/`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-    body: JSON.stringify({ question, collection_id: collectionId, pipeline }),
+    body: JSON.stringify({ question, collection_id: collectionId, pipeline, session_id: sessionId }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -145,16 +146,33 @@ export async function joinViaShare(shareToken: string) {
   return res.json();
 }
 
-export async function getChatHistory(collectionId: string) {
-  const res = await fetch(`${BASE_URL}/chat/${collectionId}/history`, {
+export async function listChatSessions(collectionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions`, {
     headers: await authHeaders(),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-export async function clearChatHistory(collectionId: string) {
-  const res = await fetch(`${BASE_URL}/chat/${collectionId}/history`, {
+export async function createChatSession(collectionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions`, {
+    method: "POST",
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getSessionMessages(collectionId: string, sessionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions/${sessionId}`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function deleteChatSession(collectionId: string, sessionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions/${sessionId}`, {
     method: "DELETE",
     headers: await authHeaders(),
   });
