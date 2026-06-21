@@ -134,11 +134,12 @@ def store_chunks(chunks, fileName, namespace: str = ""):
     except OpenAIError as error:
         raise_openai_http_error(error)
 
-    prefix = f"{namespace}-" if namespace else ""
+    safe_name = fileName.replace("/", "_").replace(" ", "_")
+    prefix = f"{namespace}-{safe_name}" if namespace else safe_name
     vectors = []
     for i, (chunk, embedding) in enumerate(zip(chunks, chunk_embeddings)):
         vectors.append({
-            "id": f"{prefix}chunk-{i}",
+            "id": f"{prefix}-chunk-{i}",
             "values": embedding,
             "metadata": {
                 "text": chunk,
