@@ -13,6 +13,16 @@ export async function ingestPdf(file: File, collectionId = "") {
   return res.json();
 }
 
+export async function ingestUrl(url: string, collectionId = "") {
+  const res = await fetch(`${BASE_URL}/ingest/url`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url, collection_id: collectionId }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function queryQuestion(
   question: string,
   collectionId = "",

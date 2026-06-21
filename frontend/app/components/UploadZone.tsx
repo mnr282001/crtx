@@ -7,11 +7,12 @@ import {
   type DragEvent,
   type ChangeEvent,
 } from "react";
-import { ingestPdf } from "../api";
+import { ingestPdf, ingestUrl } from "../api";
 
 interface FileEntry {
   id: string;
-  file: File;
+  name: string;
+  file?: File;
   status: "uploading" | "done" | "error";
   progress: number;
   chunks?: number;
@@ -26,6 +27,7 @@ interface UploadZoneProps {
 export default function UploadZone({ onIngested, collectionId = "" }: UploadZoneProps) {
   const [dragging, setDragging] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
+  const [urlInput, setUrlInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const process = useCallback(
@@ -35,6 +37,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
 
       const entries: FileEntry[] = pdfs.map((file) => ({
         id: `${file.name}-${Date.now()}-${Math.random()}`,
+        name: file.name,
         file,
         status: "uploading",
         progress: 0,
@@ -53,7 +56,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
         }, 180);
 
         try {
-          const result = await ingestPdf(entry.file, collectionId);
+          const result = await ingestPdf(entry.file!, collectionId);
           clearInterval(tick);
           setFiles((prev) =>
             prev.map((f) =>
@@ -83,6 +86,42 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
     },
     [onIngested, collectionId]
   );
+
+  const submitUrl = useCallback(async () => {
+    const url = urlInput.trim();
+    if (!url) return;
+    setUrlInput("");
+
+    const id = `url-${Date.now()}-${Math.random()}`;
+    const entry: FileEntry = { id, name: url, status: "uploading", progress: 0 };
+    setFiles((prev) => [...prev, entry]);
+
+    let progress = 0;
+    const tick = setInterval(() => {
+      progress = Math.min(progress + Math.random() * 18, 88);
+      setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, progress } : f)));
+    }, 180);
+
+    try {
+      const result = await ingestUrl(url, collectionId);
+      clearInterval(tick);
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === id ? { ...f, status: "done", progress: 100, chunks: result.chunks } : f
+        )
+      );
+      onIngested?.();
+    } catch (err) {
+      clearInterval(tick);
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === id
+            ? { ...f, status: "error", progress: 0, error: err instanceof Error ? err.message : "Ingest failed" }
+            : f
+        )
+      );
+    }
+  }, [urlInput, collectionId, onIngested]);
 
   const onDragOver = (e: DragEvent) => {
     e.preventDefault();
@@ -152,6 +191,25 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
         </div>
       </div>
 
+      {/* URL input */}
+      <div className="flex gap-1">
+        <input
+          type="url"
+          value={urlInput}
+          onChange={(e) => setUrlInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submitUrl()}
+          placeholder="https://example.com/page"
+          className="flex-1 bg-zinc-900 border border-zinc-700 text-zinc-300 placeholder-zinc-600 font-mono text-xs px-3 py-2 outline-none focus:border-zinc-500"
+        />
+        <button
+          onClick={submitUrl}
+          disabled={!urlInput.trim()}
+          className="bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 disabled:opacity-30 disabled:cursor-not-allowed font-mono text-xs px-3 py-2 transition-colors shrink-0"
+        >
+          Ingest URL
+        </button>
+      </div>
+
       {/* File list */}
       {files.length > 0 && (
         <div className="flex flex-col gap-1">
@@ -168,7 +226,7 @@ function FileRow({ entry }: { entry: FileEntry }) {
   return (
     <div className="border border-zinc-800 bg-zinc-900 p-2.5 font-mono text-xs">
       <div className="flex items-center justify-between gap-2 mb-1.5">
-        <span className="text-zinc-300 truncate flex-1">{entry.file.name}</span>
+        <span className="text-zinc-300 truncate flex-1">{entry.name}</span>
         {entry.status === "uploading" && (
           <span className="text-amber-500 shrink-0 tabular-nums">
             {Math.round(entry.progress)}%

@@ -1,9 +1,12 @@
+import asyncio
 import fitz
 import os
+from urllib.parse import urlparse
 from fastapi import HTTPException
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter
 )
+from langchain_community.document_loaders import WebBaseLoader
 from langchain_openai import OpenAIEmbeddings
 from openai import AuthenticationError, OpenAI, OpenAIError, RateLimitError
 from pinecone.exceptions import PineconeApiException
@@ -31,6 +34,23 @@ async def ingest_pdf(file, namespace: str = ""):
 
     return {
         "message": "Document ingested successfully",
+        "chunks": len(chunks)
+    }
+
+
+async def ingest_url(url: str, namespace: str = ""):
+    loader = WebBaseLoader(url)
+    docs = await asyncio.get_event_loop().run_in_executor(None, loader.load)
+    text = "\n\n".join(doc.page_content for doc in docs)
+
+    parsed = urlparse(url)
+    source_name = parsed.netloc + parsed.path
+
+    chunks = chunk_text(text)
+    store_chunks(chunks, source_name, namespace=namespace)
+
+    return {
+        "message": "URL ingested successfully",
         "chunks": len(chunks)
     }
 
