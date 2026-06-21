@@ -2,8 +2,9 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from supabase import create_client
+from openai import OpenAI
 
-from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY
+from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY, OPENAI_API_KEY
 from app.auth import get_current_user
 from app.services.langchain_service import ask_question_langchain
 from app.services.llamaindex_service import ask_question_llamaindex
@@ -11,6 +12,7 @@ from app.services.llamaindex_service import ask_question_llamaindex
 router = APIRouter()
 
 _db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+_openai = OpenAI(api_key=OPENAI_API_KEY)
 
 _DEFAULT_CONFIG = {
     "engine": "langchain",
@@ -45,6 +47,46 @@ class QueryRequest(BaseModel):
     session_id: str = ""
 
 
+_TITLE_MAX = 40
+_TITLE_SYSTEM = (
+    "You generate very short chat titles. "
+    f"Rules: respond with ONLY the title, no quotes, no punctuation at the end, max {_TITLE_MAX} characters."
+)
+
+
+def _generate_title(question: str) -> str:
+    prompt = f"Generate a title for a chat that starts with this message:\n\n{question}"
+    messages = [
+        {"role": "system", "content": _TITLE_SYSTEM},
+        {"role": "user", "content": prompt},
+    ]
+
+    for attempt in range(3):
+        response = _openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            max_tokens=20,
+            temperature=0.3,
+        )
+        title = response.choices[0].message.content.strip().strip('"').strip("'")
+        if len(title) <= _TITLE_MAX:
+            return title
+        # Feed the violation back so the model self-corrects
+        messages.append({"role": "assistant", "content": title})
+        messages.append({
+            "role": "user",
+            "content": (
+                f"That title is {len(title)} characters, which exceeds the {_TITLE_MAX}-character limit. "
+                "Please shorten it."
+            ),
+        })
+
+    # Hard fallback: truncate at word boundary
+    fallback = question[:_TITLE_MAX]
+    last_space = fallback.rfind(" ")
+    return fallback[:last_space] if last_space > 15 else fallback
+
+
 def _save_exchange(collection_id: str, user_id: str, question: str, result: dict, session_id: str):
     if not collection_id or not session_id:
         return
@@ -72,12 +114,12 @@ def _save_exchange(collection_id: str, user_id: str, question: str, result: dict
 
     update: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
     if is_first:
-        truncated = question[:40]
-        if len(question) > 40:
-            last_space = truncated.rfind(" ")
-            if last_space > 15:
-                truncated = truncated[:last_space]
-        update["title"] = truncated
+        try:
+            update["title"] = _generate_title(question)
+        except Exception:
+            fallback = question[:_TITLE_MAX]
+            last_space = fallback.rfind(" ")
+            update["title"] = fallback[:last_space] if last_space > 15 else fallback
     _db.table("chat_sessions").update(update).eq("id", session_id).execute()
 
 

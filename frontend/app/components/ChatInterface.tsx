@@ -173,7 +173,8 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
         ...prev,
         { id: `a-${Date.now()}`, role: "assistant", content: result.answer, sources: result.sources },
       ]);
-      // Update session title locally if this was the first message
+      // Optimistic title placeholder for the first message
+      const wasUntitled = sessions.find((s) => s.id === activeSessionId && (!s.title || s.title === "New Chat"));
       setSessions((prev) =>
         prev.map((s) => {
           if (s.id !== activeSessionId) return s;
@@ -189,6 +190,12 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
           return updated;
         }).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
       );
+      // Sync the AI-generated title from the server (it's ready by the time we reach here)
+      if (wasUntitled && collectionId) {
+        listChatSessions(collectionId)
+          .then((data: Session[]) => setSessions(data))
+          .catch(() => {});
+      }
     } catch (err) {
       setMessages((prev) => [
         ...prev,
