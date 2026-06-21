@@ -103,16 +103,21 @@ def ask_question_langchain(question: str, namespace: str = "", config: Optional[
     retrieval_strategy = config.get("retrieval_strategy", "similarity")
     top_k = config.get("top_k", TOP_K)
 
+    t0 = time.monotonic()
     matches = _retrieve(question, namespace, retrieval_strategy, top_k)
+    retrieval_ms = int((time.monotonic() - t0) * 1000)
+
     context = "\n\n".join(m["metadata"]["text"] for m in matches)
 
     llm = ChatOpenAI(model="gpt-4o-mini")
     chain = _RAG_PROMPT | llm | StrOutputParser()
 
+    t1 = time.monotonic()
     try:
         answer = chain.invoke({"context": context, "question": question})
     except OpenAIError as e:
         raise_openai_http_error(e)
+    generation_ms = int((time.monotonic() - t1) * 1000)
 
     return {
         "answer": answer,
@@ -125,4 +130,6 @@ def ask_question_langchain(question: str, namespace: str = "", config: Optional[
             }
             for m in matches
         ],
+        "_retrieval_ms": retrieval_ms,
+        "_generation_ms": generation_ms,
     }

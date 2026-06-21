@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 
 from fastapi import HTTPException
@@ -49,7 +50,9 @@ def ask_question_llamaindex(question: str, namespace: str = "", config: Optional
     index = VectorStoreIndex.from_vector_store(vector_store)
     query_engine = index.as_query_engine(similarity_top_k=top_k)
 
+    t0 = time.monotonic()
     response = query_engine.query(question)
+    total_ms = int((time.monotonic() - t0) * 1000)
 
     sources = []
     for node in getattr(response, "source_nodes", []):
@@ -63,4 +66,6 @@ def ask_question_llamaindex(question: str, namespace: str = "", config: Optional
     return {
         "answer": str(response),
         "sources": sources,
+        "_retrieval_ms": 0,
+        "_generation_ms": total_ms,
     }
