@@ -1,6 +1,13 @@
 import type { PipelineConfigValue } from "./components/PipelineConfig";
+import { supabase } from "./lib/supabase";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export async function ingestPdf(file: File, collectionId = "") {
   const body = new FormData();
@@ -8,7 +15,7 @@ export async function ingestPdf(file: File, collectionId = "") {
   const url = collectionId
     ? `${BASE_URL}/ingest/?collection_id=${encodeURIComponent(collectionId)}`
     : `${BASE_URL}/ingest/`;
-  const res = await fetch(url, { method: "POST", body });
+  const res = await fetch(url, { method: "POST", body, headers: await authHeaders() });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -16,7 +23,7 @@ export async function ingestPdf(file: File, collectionId = "") {
 export async function ingestUrl(url: string, collectionId = "") {
   const res = await fetch(`${BASE_URL}/ingest/url`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
     body: JSON.stringify({ url, collection_id: collectionId }),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -30,7 +37,7 @@ export async function queryQuestion(
 ) {
   const res = await fetch(`${BASE_URL}/query/`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
     body: JSON.stringify({ question, collection_id: collectionId, pipeline }),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -38,7 +45,9 @@ export async function queryQuestion(
 }
 
 export async function listCollections() {
-  const res = await fetch(`${BASE_URL}/collections/`);
+  const res = await fetch(`${BASE_URL}/collections/`, {
+    headers: await authHeaders(),
+  });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -46,7 +55,7 @@ export async function listCollections() {
 export async function createCollection(name: string) {
   const res = await fetch(`${BASE_URL}/collections/`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
     body: JSON.stringify({ name }),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -54,13 +63,18 @@ export async function createCollection(name: string) {
 }
 
 export async function deleteCollection(id: string) {
-  const res = await fetch(`${BASE_URL}/collections/${id}`, { method: "DELETE" });
+  const res = await fetch(`${BASE_URL}/collections/${id}`, {
+    method: "DELETE",
+    headers: await authHeaders(),
+  });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function getCollectionConfig(collectionId: string): Promise<PipelineConfigValue> {
-  const res = await fetch(`${BASE_URL}/collections/${collectionId}/config`);
+  const res = await fetch(`${BASE_URL}/collections/${collectionId}/config`, {
+    headers: await authHeaders(),
+  });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -71,8 +85,44 @@ export async function updateCollectionConfig(
 ): Promise<PipelineConfigValue> {
   const res = await fetch(`${BASE_URL}/collections/${collectionId}/config`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
     body: JSON.stringify(config),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function createShare(collectionId: string, permission: "query" | "ingest") {
+  const res = await fetch(`${BASE_URL}/collections/${collectionId}/shares`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+    body: JSON.stringify({ permission }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listShares(collectionId: string) {
+  const res = await fetch(`${BASE_URL}/collections/${collectionId}/shares`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function deleteShare(collectionId: string, shareId: string) {
+  const res = await fetch(`${BASE_URL}/collections/${collectionId}/shares/${shareId}`, {
+    method: "DELETE",
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function joinViaShare(shareToken: string) {
+  const res = await fetch(`${BASE_URL}/collections/join/${shareToken}`, {
+    method: "POST",
+    headers: await authHeaders(),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
