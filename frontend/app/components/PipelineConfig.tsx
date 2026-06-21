@@ -2,25 +2,17 @@
 
 import { useState } from "react";
 
-export type Engine = "langchain" | "llamaindex";
 export type RetrievalStrategy = "similarity" | "mmr" | "threshold";
 
 export interface PipelineConfigValue {
-  engine: Engine;
   chunk_size: number;
   retrieval_strategy: RetrievalStrategy;
 }
 
 export const DEFAULT_PIPELINE_CONFIG: PipelineConfigValue = {
-  engine: "langchain",
   chunk_size: 1000,
   retrieval_strategy: "similarity",
 };
-
-const ENGINES: { value: Engine; label: string }[] = [
-  { value: "langchain", label: "LangChain" },
-  { value: "llamaindex", label: "LlamaIndex" },
-];
 
 const STRATEGIES: { value: RetrievalStrategy; label: string; desc: string }[] = [
   { value: "similarity", label: "Similarity", desc: "Top-k cosine match" },
@@ -58,29 +50,6 @@ export default function PipelineConfig({ config, saving = false, onChange }: Pro
 
       {open && (
         <div className="px-4 pb-4 flex flex-col gap-5">
-          {/* Engine toggle */}
-          <div>
-            <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-[0.15em] mb-2">
-              Engine
-            </p>
-            <div className="flex border border-zinc-700">
-              {ENGINES.map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => onChange({ ...config, engine: value })}
-                  className={[
-                    "flex-1 py-1.5 text-xs font-mono uppercase tracking-[0.1em] transition-colors duration-100",
-                    config.engine === value
-                      ? "bg-amber-500 text-zinc-950 font-bold"
-                      : "text-zinc-400 hover:text-zinc-200",
-                  ].join(" ")}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Chunk size slider */}
           <div>
             <div className="flex justify-between items-center mb-2">

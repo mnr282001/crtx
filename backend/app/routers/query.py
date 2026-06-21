@@ -7,7 +7,6 @@ from openai import OpenAI
 from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY, OPENAI_API_KEY
 from app.auth import get_current_user
 from app.services.langchain_service import ask_question_langchain
-from app.services.llamaindex_service import ask_question_llamaindex
 from app.services.eval_service import score_and_log
 
 router = APIRouter()
@@ -16,7 +15,6 @@ _db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 _openai = OpenAI(api_key=OPENAI_API_KEY)
 
 _DEFAULT_CONFIG = {
-    "engine": "langchain",
     "chunk_size": 1000,
     "retrieval_strategy": "similarity",
 }
@@ -44,7 +42,6 @@ def _can_query(collection_id: str, user_id: str) -> bool:
 class QueryRequest(BaseModel):
     question: str
     collection_id: str = ""
-    pipeline: str = ""
     session_id: str = ""
 
 
@@ -132,20 +129,12 @@ def query(request: QueryRequest, background_tasks: BackgroundTasks, user: dict =
         raise HTTPException(status_code=403, detail="Access denied")
 
     config = _get_collection_config(request.collection_id)
-    engine = request.pipeline or config.get("engine", "langchain")
 
-    if engine == "llamaindex":
-        result = ask_question_llamaindex(
-            request.question,
-            namespace=request.collection_id,
-            config=config,
-        )
-    else:
-        result = ask_question_langchain(
-            request.question,
-            namespace=request.collection_id,
-            config=config,
-        )
+    result = ask_question_langchain(
+        request.question,
+        namespace=request.collection_id,
+        config=config,
+    )
 
     _save_exchange(request.collection_id, user["sub"], request.question, result, request.session_id)
 
@@ -159,7 +148,7 @@ def query(request: QueryRequest, background_tasks: BackgroundTasks, user: dict =
         answer=result.get("answer", ""),
         retrieval_ms=result.get("_retrieval_ms", 0),
         generation_ms=result.get("_generation_ms", 0),
-        engine=engine,
+        engine="langchain",
         retrieval_strategy=config.get("retrieval_strategy", "similarity"),
         top_k=config.get("top_k", 5),
     )

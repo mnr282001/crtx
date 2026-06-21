@@ -11,7 +11,6 @@ router = APIRouter()
 _db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 
 _DEFAULT_CONFIG = {
-    "engine": "langchain",
     "chunk_size": 1000,
     "retrieval_strategy": "similarity",
 }
@@ -22,7 +21,6 @@ class CreateCollectionRequest(BaseModel):
 
 
 class PipelineConfig(BaseModel):
-    engine: Literal["langchain", "llamaindex"] = "langchain"
     chunk_size: int = 1000
     retrieval_strategy: Literal["similarity", "mmr", "threshold"] = "similarity"
 

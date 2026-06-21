@@ -119,7 +119,6 @@ export default function Home() {
         >
           <ChatInterface
             collectionId={activeId}
-            pipeline={pipelineConfig.engine}
           />
         </main>
 
