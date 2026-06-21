@@ -33,12 +33,13 @@ export async function ingestUrl(url: string, collectionId = "") {
 export async function queryQuestion(
   question: string,
   collectionId = "",
-  pipeline = ""
+  pipeline = "",
+  sessionId = ""
 ) {
   const res = await fetch(`${BASE_URL}/query/`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-    body: JSON.stringify({ question, collection_id: collectionId, pipeline }),
+    body: JSON.stringify({ question, collection_id: collectionId, pipeline, session_id: sessionId }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -136,10 +137,71 @@ export async function listDocuments(collectionId: string) {
   return res.json();
 }
 
+export async function deleteDocument(collectionId: string, documentId: string) {
+  const res = await fetch(`${BASE_URL}/collections/${collectionId}/documents/${documentId}`, {
+    method: "DELETE",
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function joinViaShare(shareToken: string) {
   const res = await fetch(`${BASE_URL}/collections/join/${shareToken}`, {
     method: "POST",
     headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listChatSessions(collectionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function createChatSession(collectionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions`, {
+    method: "POST",
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getSessionMessages(collectionId: string, sessionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions/${sessionId}`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function deleteChatSession(collectionId: string, sessionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions/${sessionId}`, {
+    method: "DELETE",
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getCollectionMembers(collectionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/members`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function shareChatSession(collectionId: string, sessionId: string, targetUserId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions/${sessionId}/share`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+    body: JSON.stringify({ target_user_id: targetUserId }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();

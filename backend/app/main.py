@@ -5,6 +5,7 @@ from app.config import (
 )
 
 from app.routers import (
+    chat,
     collections,
     ingest,
     query
@@ -32,4 +33,9 @@ app.include_router(
 app.include_router(
     query.router,
     prefix="/query"
+)
+
+app.include_router(
+    chat.router,
+    prefix="/chat"
 )

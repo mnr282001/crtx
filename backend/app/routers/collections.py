@@ -131,7 +131,14 @@ def list_shares(collection_id: str, user: dict = Depends(get_current_user)):
     _assert_owner(collection_id, user["sub"])
     shares = _db.table("collection_shares").select("*").eq("collection_id", collection_id).execute()
     members = _db.table("collection_members").select("*").eq("collection_id", collection_id).execute()
-    return {"shares": shares.data or [], "members": members.data or []}
+    member_rows = members.data or []
+    if member_rows:
+        user_ids = [m["user_id"] for m in member_rows]
+        auth_users = _db.auth.admin.list_users()
+        email_map = {u.id: (u.email or u.id) for u in auth_users if u.id in user_ids}
+        for m in member_rows:
+            m["email"] = email_map.get(m["user_id"], m["user_id"])
+    return {"shares": shares.data or [], "members": member_rows}
 
 
 @router.delete("/{collection_id}/shares/{share_id}")
@@ -144,7 +151,13 @@ def delete_share(collection_id: str, share_id: str, user: dict = Depends(get_cur
 @router.delete("/{collection_id}/members/{member_id}")
 def remove_member(collection_id: str, member_id: str, user: dict = Depends(get_current_user)):
     _assert_owner(collection_id, user["sub"])
-    _db.table("collection_members").delete().eq("id", member_id).eq("collection_id", collection_id).execute()
+    member_res = _db.table("collection_members").select("user_id").eq("id", member_id).eq("collection_id", collection_id).execute()
+    if member_res.data:
+        removed_user_id = member_res.data[0]["user_id"]
+        _db.table("collection_members").delete().eq("id", member_id).eq("collection_id", collection_id).execute()
+        # Delete sessions (cascades to their messages), then any sessionless messages
+        _db.table("chat_sessions").delete().eq("collection_id", collection_id).eq("user_id", removed_user_id).execute()
+        _db.table("chat_messages").delete().eq("collection_id", collection_id).eq("user_id", removed_user_id).execute()
     return {"removed": member_id}
 
 
@@ -165,6 +178,22 @@ def list_documents(collection_id: str, user: dict = Depends(get_current_user)):
             doc["open_url"] = doc.get("url")
         result.append(doc)
     return result
+
+
+@router.delete("/{collection_id}/documents/{document_id}")
+def delete_document(collection_id: str, document_id: str, user: dict = Depends(get_current_user)):
+    _assert_owner(collection_id, user["sub"])
+    doc_res = _db.table("collection_documents").select("storage_path").eq("id", document_id).eq("collection_id", collection_id).execute()
+    if not doc_res.data:
+        raise HTTPException(status_code=404, detail="Document not found")
+    storage_path = doc_res.data[0].get("storage_path")
+    if storage_path:
+        try:
+            _db.storage.from_("documents").remove([storage_path])
+        except Exception:
+            pass
+    _db.table("collection_documents").delete().eq("id", document_id).eq("collection_id", collection_id).execute()
+    return {"deleted": document_id}
 
 
 @router.post("/join/{share_token}")

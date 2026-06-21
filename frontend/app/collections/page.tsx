@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useCollections } from "../context/collections";
 import { useAuth } from "../context/auth";
 import { createCollection, deleteCollection, createShare, listShares, deleteShare, removeMember } from "../api";
+import ConfirmModal from "../components/ConfirmModal";
 
 type Share = { id: string; share_token: string; permission: "query" | "ingest"; created_at: string };
-type Member = { id: string; user_id: string; permission: "query" | "ingest"; joined_at: string };
+type Member = { id: string; user_id: string; email?: string; permission: "query" | "ingest"; joined_at: string };
 
 function ShareModal({ collectionId, collectionName, onClose }: { collectionId: string; collectionName: string; onClose: () => void }) {
   const [shares, setShares] = useState<Share[]>([]);
@@ -16,6 +17,7 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
   const [creating, setCreating] = useState(false);
   const [loadingShares, setLoadingShares] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [confirmMemberId, setConfirmMemberId] = useState<string | null>(null);
 
   const load = async () => {
     setLoadingShares(true);
@@ -59,6 +61,7 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div className="w-full max-w-md bg-zinc-900 border border-zinc-700 flex flex-col gap-0">
         {/* Header */}
@@ -125,12 +128,12 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
             <p className="text-xs font-mono uppercase tracking-[0.12em] text-zinc-600 mb-1">Members</p>
             {members.map((m) => (
               <div key={m.id} className="flex items-center gap-2">
-                <span className="text-xs font-mono text-zinc-500 flex-1 truncate">{m.user_id.slice(0, 8)}…</span>
+                <span className="text-xs font-mono text-zinc-500 flex-1 truncate">{m.email ?? m.user_id.slice(0, 8) + "…"}</span>
                 <span className={`text-xs font-mono px-1.5 py-0.5 ${m.permission === "ingest" ? "bg-amber-500/20 text-amber-400" : "bg-zinc-700 text-zinc-400"}`}>
                   {m.permission}
                 </span>
                 <button
-                  onClick={() => remove(m.id)}
+                  onClick={() => setConfirmMemberId(m.id)}
                   className="text-xs font-mono text-zinc-600 hover:text-red-400 transition-colors shrink-0"
                 >
                   Remove
@@ -141,6 +144,15 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
         )}
       </div>
     </div>
+    {confirmMemberId && (
+      <ConfirmModal
+        message="Remove this member from the collection?"
+        confirmLabel="Remove"
+        onConfirm={async () => { const id = confirmMemberId; setConfirmMemberId(null); await remove(id); }}
+        onCancel={() => setConfirmMemberId(null)}
+      />
+    )}
+    </>
   );
 }
 
