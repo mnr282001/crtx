@@ -72,7 +72,12 @@ def _save_exchange(collection_id: str, user_id: str, question: str, result: dict
 
     update: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
     if is_first:
-        update["title"] = question[:60]
+        truncated = question[:40]
+        if len(question) > 40:
+            last_space = truncated.rfind(" ")
+            if last_space > 15:
+                truncated = truncated[:last_space]
+        update["title"] = truncated
     _db.table("chat_sessions").update(update).eq("id", session_id).execute()
 
 

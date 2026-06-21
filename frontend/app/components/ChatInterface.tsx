@@ -178,7 +178,14 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
         prev.map((s) => {
           if (s.id !== activeSessionId) return s;
           const updated = { ...s, updated_at: new Date().toISOString() };
-          if (s.title === "New Chat") updated.title = q.slice(0, 60);
+          if (!s.title || s.title === "New Chat") {
+            let title = q.slice(0, 40);
+            if (q.length > 40) {
+              const lastSpace = title.lastIndexOf(" ");
+              if (lastSpace > 15) title = title.slice(0, lastSpace);
+            }
+            updated.title = title;
+          }
           return updated;
         }).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
       );
@@ -270,7 +277,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                   "flex-1 text-xs font-mono leading-snug truncate",
                   s.id === activeSessionId ? "text-zinc-100" : "text-zinc-400",
                 ].join(" ")}>
-                  {s.title}
+                  {s.title || "New Chat"}
                 </p>
                 <button
                   onClick={(e) => { e.stopPropagation(); setShareSession(s); }}
@@ -310,7 +317,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
             ☰ Chats
           </button>
           {activeSession && (
-            <p className="text-xs font-mono text-zinc-500 truncate flex-1">{activeSession.title}</p>
+            <p className="text-xs font-mono text-zinc-500 truncate flex-1">{activeSession.title || "New Chat"}</p>
           )}
           <button
             onClick={newChat}

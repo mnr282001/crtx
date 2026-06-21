@@ -129,7 +129,7 @@ def share_session(collection_id: str, session_id: str, req: ShareSessionRequest,
             )
 
     session_res = _db.table("chat_sessions").select("title").eq("id", session_id).execute()
-    title = session_res.data[0]["title"] if session_res.data else "Shared Chat"
+    title = (session_res.data[0]["title"] if session_res.data else None) or "Shared Chat"
 
     new_session_res = _db.table("chat_sessions").insert({
         "collection_id": collection_id,
