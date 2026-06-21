@@ -372,7 +372,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
           {activeSession && (
             <p className="text-xs font-mono text-zinc-500 truncate flex-1">{activeSession.title || "New Chat"}</p>
           )}
-          {activeSession && (
+          {activeSession && messages.length > 0 && (
             <button
               onClick={() => setShareSession(activeSession)}
               className="text-[10px] font-mono text-zinc-500 hover:text-amber-400 uppercase tracking-[0.15em] shrink-0 transition-colors"
@@ -393,12 +393,14 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
           <div className="hidden md:flex items-center justify-between px-4 py-2.5 border-b border-zinc-800 shrink-0">
             <span className="text-xs font-mono text-zinc-300 truncate">{activeSession.title || "New Chat"}</span>
             <div className="flex items-center gap-3 shrink-0 ml-3">
-              <button
-                onClick={() => setShareSession(activeSession)}
-                className="text-[10px] font-mono text-zinc-500 hover:text-amber-400 uppercase tracking-[0.15em] transition-colors"
-              >
-                ↗ Share
-              </button>
+              {messages.length > 0 && (
+                <button
+                  onClick={() => setShareSession(activeSession)}
+                  className="text-[10px] font-mono text-zinc-500 hover:text-amber-400 uppercase tracking-[0.15em] transition-colors"
+                >
+                  ↗ Share
+                </button>
+              )}
               <div className="relative">
                 <button
                   onClick={() => setOpenMenuId(openMenuId === "__titlebar__" ? null : "__titlebar__")}
