@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCollections } from "../context/collections";
 import { useAuth } from "../context/auth";
 import { createCollection, deleteCollection, createShare, listShares, deleteShare, removeMember } from "../api";
+import ConfirmModal from "../components/ConfirmModal";
 
 type Share = { id: string; share_token: string; permission: "query" | "ingest"; created_at: string };
 type Member = { id: string; user_id: string; email?: string; permission: "query" | "ingest"; joined_at: string };
@@ -16,6 +17,7 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
   const [creating, setCreating] = useState(false);
   const [loadingShares, setLoadingShares] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [confirmMemberId, setConfirmMemberId] = useState<string | null>(null);
 
   const load = async () => {
     setLoadingShares(true);
@@ -59,6 +61,15 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
   };
 
   return (
+    <>
+    {confirmMemberId && (
+      <ConfirmModal
+        message="Remove this member from the collection?"
+        confirmLabel="Remove"
+        onConfirm={async () => { const id = confirmMemberId; setConfirmMemberId(null); await remove(id); }}
+        onCancel={() => setConfirmMemberId(null)}
+      />
+    )}
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div className="w-full max-w-md bg-zinc-900 border border-zinc-700 flex flex-col gap-0">
         {/* Header */}
@@ -130,7 +141,7 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
                   {m.permission}
                 </span>
                 <button
-                  onClick={() => remove(m.id)}
+                  onClick={() => setConfirmMemberId(m.id)}
                   className="text-xs font-mono text-zinc-600 hover:text-red-400 transition-colors shrink-0"
                 >
                   Remove
@@ -141,6 +152,7 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
         )}
       </div>
     </div>
+    </>
   );
 }
 

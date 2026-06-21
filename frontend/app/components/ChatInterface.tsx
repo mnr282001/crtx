@@ -17,6 +17,7 @@ import {
   deleteChatSession,
 } from "../api";
 import SourceCard from "./SourceCard";
+import ConfirmModal from "./ConfirmModal";
 
 interface Source {
   source: string;
@@ -49,6 +50,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
+  const [confirmSession, setConfirmSession] = useState<Session | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -124,9 +126,15 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
     }
   };
 
-  const removeSession = async (e: React.MouseEvent, session: Session) => {
+  const removeSession = (e: React.MouseEvent, session: Session) => {
     e.stopPropagation();
-    if (!collectionId) return;
+    setConfirmSession(session);
+  };
+
+  const doRemoveSession = async () => {
+    if (!confirmSession || !collectionId) return;
+    const session = confirmSession;
+    setConfirmSession(null);
     try {
       await deleteChatSession(collectionId, session.id);
       setSessions((prev) => {
@@ -204,6 +212,15 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
   const activeSession = sessions.find((s) => s.id === activeSessionId);
 
   return (
+    <>
+    {confirmSession && (
+      <ConfirmModal
+        message={`Delete "${confirmSession.title}"?`}
+        confirmLabel="Delete"
+        onConfirm={doRemoveSession}
+        onCancel={() => setConfirmSession(null)}
+      />
+    )}
     <div className="flex h-full min-h-0">
       {/* Sessions panel — desktop always visible, mobile overlay */}
       <aside
@@ -363,6 +380,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
         </div>
       </div>
     </div>
+    </>
   );
 }
 

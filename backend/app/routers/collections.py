@@ -180,6 +180,22 @@ def list_documents(collection_id: str, user: dict = Depends(get_current_user)):
     return result
 
 
+@router.delete("/{collection_id}/documents/{document_id}")
+def delete_document(collection_id: str, document_id: str, user: dict = Depends(get_current_user)):
+    _assert_owner(collection_id, user["sub"])
+    doc_res = _db.table("collection_documents").select("storage_path").eq("id", document_id).eq("collection_id", collection_id).execute()
+    if not doc_res.data:
+        raise HTTPException(status_code=404, detail="Document not found")
+    storage_path = doc_res.data[0].get("storage_path")
+    if storage_path:
+        try:
+            _db.storage.from_("documents").remove([storage_path])
+        except Exception:
+            pass
+    _db.table("collection_documents").delete().eq("id", document_id).eq("collection_id", collection_id).execute()
+    return {"deleted": document_id}
+
+
 @router.post("/join/{share_token}")
 def join_via_share(share_token: str, user: dict = Depends(get_current_user)):
     share_res = _db.table("collection_shares").select("*").eq("share_token", share_token).execute()

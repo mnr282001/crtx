@@ -137,6 +137,15 @@ export async function listDocuments(collectionId: string) {
   return res.json();
 }
 
+export async function deleteDocument(collectionId: string, documentId: string) {
+  const res = await fetch(`${BASE_URL}/collections/${collectionId}/documents/${documentId}`, {
+    method: "DELETE",
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function joinViaShare(shareToken: string) {
   const res = await fetch(`${BASE_URL}/collections/join/${shareToken}`, {
     method: "POST",
