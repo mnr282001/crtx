@@ -62,14 +62,6 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
 
   return (
     <>
-    {confirmMemberId && (
-      <ConfirmModal
-        message="Remove this member from the collection?"
-        confirmLabel="Remove"
-        onConfirm={async () => { const id = confirmMemberId; setConfirmMemberId(null); await remove(id); }}
-        onCancel={() => setConfirmMemberId(null)}
-      />
-    )}
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div className="w-full max-w-md bg-zinc-900 border border-zinc-700 flex flex-col gap-0">
         {/* Header */}
@@ -152,6 +144,14 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
         )}
       </div>
     </div>
+    {confirmMemberId && (
+      <ConfirmModal
+        message="Remove this member from the collection?"
+        confirmLabel="Remove"
+        onConfirm={async () => { const id = confirmMemberId; setConfirmMemberId(null); await remove(id); }}
+        onCancel={() => setConfirmMemberId(null)}
+      />
+    )}
     </>
   );
 }
