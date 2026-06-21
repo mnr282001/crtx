@@ -1,8 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from supabase import create_client
 
 from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY
+from app.auth import get_current_user
 from app.services.langchain_service import ask_question_langchain
 from app.services.llamaindex_service import ask_question_llamaindex
 
@@ -26,6 +27,16 @@ def _get_collection_config(collection_id: str) -> dict:
     return {**_DEFAULT_CONFIG, **res.data[0].get("config", {})}
 
 
+def _can_query(collection_id: str, user_id: str) -> bool:
+    if not collection_id:
+        return True
+    own = _db.table("collections").select("id").eq("id", collection_id).eq("user_id", user_id).execute()
+    if own.data:
+        return True
+    member = _db.table("collection_members").select("id").eq("collection_id", collection_id).eq("user_id", user_id).execute()
+    return bool(member.data)
+
+
 class QueryRequest(BaseModel):
     question: str
     collection_id: str = ""
@@ -33,7 +44,10 @@ class QueryRequest(BaseModel):
 
 
 @router.post("/")
-def query(request: QueryRequest):
+def query(request: QueryRequest, user: dict = Depends(get_current_user)):
+    if request.collection_id and not _can_query(request.collection_id, user["sub"]):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     config = _get_collection_config(request.collection_id)
     engine = request.pipeline or config.get("engine", "langchain")
 
