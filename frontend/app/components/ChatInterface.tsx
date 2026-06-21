@@ -161,6 +161,9 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
     const q = input.trim();
     if (!q || loading || !activeSessionId) return;
 
+    // Capture before any state mutations — used to trigger title re-fetch after backend responds
+    const isFirstMessage = messages.length === 0;
+
     const optimisticUser: Message = { id: `u-${Date.now()}`, role: "user", content: q };
     setMessages((prev) => [...prev, optimisticUser]);
     setInput("");
@@ -173,25 +176,14 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
         ...prev,
         { id: `a-${Date.now()}`, role: "assistant", content: result.answer, sources: result.sources },
       ]);
-      // Optimistic title placeholder for the first message
-      const wasUntitled = sessions.find((s) => s.id === activeSessionId && (!s.title || s.title === "New Chat"));
       setSessions((prev) =>
         prev.map((s) => {
           if (s.id !== activeSessionId) return s;
-          const updated = { ...s, updated_at: new Date().toISOString() };
-          if (!s.title || s.title === "New Chat") {
-            let title = q.slice(0, 40);
-            if (q.length > 40) {
-              const lastSpace = title.lastIndexOf(" ");
-              if (lastSpace > 15) title = title.slice(0, lastSpace);
-            }
-            updated.title = title;
-          }
-          return updated;
+          return { ...s, updated_at: new Date().toISOString() };
         }).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
       );
-      // Sync the AI-generated title from the server (it's ready by the time we reach here)
-      if (wasUntitled && collectionId) {
+      // Re-fetch sessions to pull the AI-generated title the backend saved
+      if (isFirstMessage && collectionId) {
         listChatSessions(collectionId)
           .then((data: Session[]) => setSessions(data))
           .catch(() => {});
