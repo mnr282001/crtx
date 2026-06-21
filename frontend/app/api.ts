@@ -144,3 +144,20 @@ export async function joinViaShare(shareToken: string) {
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+export async function getChatHistory(collectionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/history`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function clearChatHistory(collectionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/history`, {
+    method: "DELETE",
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
