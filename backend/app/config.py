@@ -6,6 +6,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
+SUPABASE_JWKS_URL = os.getenv("SUPABASE_JWKS_URL")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
