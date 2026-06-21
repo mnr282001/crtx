@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
   type ChangeEvent,
 } from "react";
+import ReactMarkdown from "react-markdown";
 import { queryQuestion } from "../api";
 import SourceCard from "./SourceCard";
 
@@ -177,13 +178,30 @@ function AssistantBubble({ msg }: { msg: Message }) {
   return (
     <div className="flex flex-col gap-3 max-w-full sm:max-w-[88%]">
       <div className="border-l-2 border-amber-500/60 pl-3 sm:pl-4">
-        <p
-          className={`text-sm leading-7 whitespace-pre-wrap ${
-            msg.isError ? "text-red-400 font-mono" : "text-zinc-200"
-          }`}
-        >
-          {msg.content}
-        </p>
+        {msg.isError ? (
+          <p className="text-sm leading-7 text-red-400 font-mono whitespace-pre-wrap">
+            {msg.content}
+          </p>
+        ) : (
+          <ReactMarkdown
+            components={{
+              p: ({ children }) => <p className="text-sm leading-7 text-zinc-200 mb-2 last:mb-0">{children}</p>,
+              strong: ({ children }) => <strong className="font-semibold text-zinc-100">{children}</strong>,
+              em: ({ children }) => <em className="italic text-zinc-300">{children}</em>,
+              ul: ({ children }) => <ul className="list-disc pl-5 mb-2 space-y-1 text-sm text-zinc-200">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 space-y-1 text-sm text-zinc-200">{children}</ol>,
+              li: ({ children }) => <li className="leading-7">{children}</li>,
+              h1: ({ children }) => <h1 className="text-base font-bold text-zinc-100 mb-2 mt-3">{children}</h1>,
+              h2: ({ children }) => <h2 className="text-sm font-bold text-zinc-100 mb-1 mt-3">{children}</h2>,
+              h3: ({ children }) => <h3 className="text-sm font-semibold text-zinc-200 mb-1 mt-2">{children}</h3>,
+              code: ({ children }) => <code className="bg-zinc-800 text-amber-400 px-1 py-0.5 text-xs font-mono rounded">{children}</code>,
+              pre: ({ children }) => <pre className="bg-zinc-900 border border-zinc-700 p-3 mb-2 overflow-x-auto text-xs font-mono text-zinc-300">{children}</pre>,
+              blockquote: ({ children }) => <blockquote className="border-l-2 border-zinc-600 pl-3 text-zinc-400 italic mb-2">{children}</blockquote>,
+            }}
+          >
+            {msg.content}
+          </ReactMarkdown>
+        )}
       </div>
 
       {msg.sources && msg.sources.length > 0 && (
