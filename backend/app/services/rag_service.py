@@ -1,5 +1,6 @@
 import asyncio
 import fitz
+import hashlib
 import os
 from urllib.parse import urlparse
 from fastapi import HTTPException
@@ -19,9 +20,18 @@ from app.config import (
 )
 from app.db.vector_store import get_index
 
+MIN_TEXT_CHARS = 100
+
 
 def get_openai_client():
     return OpenAI()
+
+
+def chunk_vector_id(collection_id: str, source: str, chunk_index: int) -> str:
+    """Deterministic Pinecone vector ID derived from content coordinates.
+    Ensures re-running a job never creates duplicate vectors."""
+    key = f"{collection_id}|{source}|{chunk_index}"
+    return hashlib.sha256(key.encode()).hexdigest()
 
 async def ingest_pdf(file, namespace: str = ""):
     pdf_bytes = await file.read()

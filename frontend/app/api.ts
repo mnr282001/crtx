@@ -9,7 +9,21 @@ async function authHeaders(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function ingestPdf(file: File, collectionId = "") {
+export interface IngestJob {
+  id: string;
+  job_id: string;
+  user_id: string;
+  collection_id: string | null;
+  source: string;
+  status: "queued" | "processing" | "succeeded" | "failed" | "partial";
+  error_message: string | null;
+  chunks_processed: number;
+  chunks_total: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function ingestPdf(file: File, collectionId = ""): Promise<{ job_id: string }> {
   const body = new FormData();
   body.append("file", file);
   const url = collectionId
@@ -20,11 +34,19 @@ export async function ingestPdf(file: File, collectionId = "") {
   return res.json();
 }
 
-export async function ingestUrl(url: string, collectionId = "") {
+export async function ingestUrl(url: string, collectionId = ""): Promise<{ job_id: string }> {
   const res = await fetch(`${BASE_URL}/ingest/url`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await authHeaders()) },
     body: JSON.stringify({ url, collection_id: collectionId }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getIngestJob(jobId: string): Promise<IngestJob> {
+  const res = await fetch(`${BASE_URL}/ingest/jobs/${jobId}`, {
+    headers: await authHeaders(),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();

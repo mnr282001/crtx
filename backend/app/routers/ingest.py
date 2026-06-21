@@ -1,15 +1,20 @@
 import os
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+import uuid
+from typing import Optional
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
 from supabase import create_client
 
 from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY
 from app.auth import get_current_user
-from app.services.rag_service import ingest_pdf_from_bytes, ingest_url as _ingest_url
 
 router = APIRouter()
 
 _db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+
+
+def _arq(request: Request):
+    return request.app.state.arq_pool
 
 
 def _can_ingest(collection_id: str, user_id: str) -> bool:
@@ -24,6 +29,46 @@ def _can_ingest(collection_id: str, user_id: str) -> bool:
     return False
 
 
+async def _enqueue(
+    arq_pool,
+    *,
+    user_id: str,
+    collection_id: str,
+    document_id: Optional[str],
+    source_type: str,
+    source: str,
+    storage_path: Optional[str] = None,
+    url: Optional[str] = None,
+) -> str:
+    # Pre-generate the ID so we can pass it to the job function AND use it
+    # as Arq's queue key via _job_id, making the ingest_jobs row insertable
+    # before the job starts.
+    job_id = str(uuid.uuid4())
+
+    _db.table("ingest_jobs").insert({
+        "job_id": job_id,
+        "user_id": user_id,
+        "collection_id": collection_id or None,
+        "source": source,
+        "status": "queued",
+    }).execute()
+
+    await arq_pool.enqueue_job(
+        "ingest_document",
+        _job_id=job_id,
+        job_id=job_id,
+        user_id=user_id,
+        collection_id=collection_id,
+        document_id=document_id,
+        source_type=source_type,
+        source=source,
+        storage_path=storage_path,
+        url=url,
+    )
+
+    return job_id
+
+
 class UrlIngestRequest(BaseModel):
     url: str
     collection_id: str = ""
@@ -31,6 +76,7 @@ class UrlIngestRequest(BaseModel):
 
 @router.post("/")
 async def ingest(
+    request: Request,
     file: UploadFile = File(...),
     collection_id: str = Query(default=""),
     user: dict = Depends(get_current_user),
@@ -41,46 +87,89 @@ async def ingest(
     pdf_bytes = await file.read()
     file_name = os.path.basename(file.filename or "document.pdf")
 
-    result = await ingest_pdf_from_bytes(pdf_bytes, file_name, namespace=collection_id)
+    # Always upload to storage so the worker can download it
+    storage_path = (
+        f"{collection_id}/{file_name}" if collection_id
+        else f"{user['sub']}/{file_name}"
+    )
+    try:
+        _db.storage.from_("documents").upload(
+            path=storage_path,
+            file=pdf_bytes,
+            file_options={"content-type": "application/pdf", "upsert": "true"},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Storage upload failed: {exc}")
 
+    document_id: Optional[str] = None
     if collection_id:
-        storage_path = f"{collection_id}/{file_name}"
-        try:
-            _db.storage.from_("documents").upload(
-                path=storage_path,
-                file=pdf_bytes,
-                file_options={"content-type": "application/pdf", "upsert": "true"},
-            )
-        except Exception:
-            storage_path = None
-
-        _db.table("collection_documents").insert({
+        result = _db.table("collection_documents").insert({
             "collection_id": collection_id,
             "name": file_name,
             "source_type": "pdf",
             "storage_path": storage_path,
-            "chunk_count": result["chunks"],
             "uploaded_by": user["sub"],
         }).execute()
+        document_id = result.data[0]["id"]
 
-    return result
+    job_id = await _enqueue(
+        _arq(request),
+        user_id=user["sub"],
+        collection_id=collection_id,
+        document_id=document_id,
+        source_type="pdf",
+        source=file_name,
+        storage_path=storage_path,
+    )
+
+    return {"job_id": job_id}
 
 
 @router.post("/url")
-async def ingest_from_url(request: UrlIngestRequest, user: dict = Depends(get_current_user)):
-    if not _can_ingest(request.collection_id, user["sub"]):
+async def ingest_from_url(
+    request: Request,
+    body: UrlIngestRequest,
+    user: dict = Depends(get_current_user),
+):
+    if not _can_ingest(body.collection_id, user["sub"]):
         raise HTTPException(status_code=403, detail="Ingest permission required")
 
-    result = await _ingest_url(request.url, namespace=request.collection_id)
+    from urllib.parse import urlparse as _urlparse
+    parsed_url = _urlparse(body.url)
+    source = parsed_url.netloc + parsed_url.path
 
-    if request.collection_id:
-        _db.table("collection_documents").insert({
-            "collection_id": request.collection_id,
-            "name": request.url,
+    document_id: Optional[str] = None
+    if body.collection_id:
+        result = _db.table("collection_documents").insert({
+            "collection_id": body.collection_id,
+            "name": body.url,
             "source_type": "url",
-            "url": request.url,
-            "chunk_count": result["chunks"],
+            "url": body.url,
             "uploaded_by": user["sub"],
         }).execute()
+        document_id = result.data[0]["id"]
 
-    return result
+    job_id = await _enqueue(
+        _arq(request),
+        user_id=user["sub"],
+        collection_id=body.collection_id,
+        document_id=document_id,
+        source_type="url",
+        source=source,
+        url=body.url,
+    )
+
+    return {"job_id": job_id}
+
+
+@router.get("/jobs/{job_id}")
+async def get_job_status(job_id: str, user: dict = Depends(get_current_user)):
+    result = _db.table("ingest_jobs").select("*").eq("job_id", job_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job = result.data[0]
+    if job["user_id"] != user["sub"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return job

@@ -19,3 +19,5 @@ EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", 1024))
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 1000))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 200))
 TOP_K = int(os.getenv("TOP_K", 5))
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")

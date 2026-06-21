@@ -7,15 +7,15 @@ import {
   type DragEvent,
   type ChangeEvent,
 } from "react";
-import { ingestPdf, ingestUrl } from "../api";
+import { getIngestJob, ingestPdf, ingestUrl } from "../api";
 
 interface FileEntry {
   id: string;
   name: string;
-  file?: File;
-  status: "uploading" | "done" | "error";
+  status: "uploading" | "queued" | "processing" | "done" | "partial" | "error";
   progress: number;
   chunks?: number;
+  chunksTotal?: number;
   error?: string;
 }
 
@@ -24,11 +24,59 @@ interface UploadZoneProps {
   collectionId?: string;
 }
 
+const POLL_INTERVAL_MS = 1500;
+
+async function pollJob(
+  jobId: string,
+  onUpdate: (entry: Partial<FileEntry>) => void,
+): Promise<void> {
+  while (true) {
+    const job = await getIngestJob(jobId);
+
+    if (job.status === "succeeded") {
+      onUpdate({ status: "done", progress: 100, chunks: job.chunks_processed });
+      return;
+    }
+
+    if (job.status === "failed") {
+      throw new Error(job.error_message ?? "Ingest failed");
+    }
+
+    if (job.status === "partial") {
+      onUpdate({
+        status: "partial",
+        progress: 100,
+        chunks: job.chunks_processed,
+        error: job.error_message ?? undefined,
+      });
+      return;
+    }
+
+    // queued or processing — update progress bar if we have totals
+    if (job.chunks_total && job.chunks_total > 0) {
+      const pct = Math.round((job.chunks_processed / job.chunks_total) * 90) + 5;
+      onUpdate({
+        status: job.status === "queued" ? "queued" : "processing",
+        progress: pct,
+        chunksTotal: job.chunks_total,
+      });
+    } else {
+      onUpdate({ status: job.status === "queued" ? "queued" : "processing" });
+    }
+
+    await new Promise<void>((r) => setTimeout(r, POLL_INTERVAL_MS));
+  }
+}
+
 export default function UploadZone({ onIngested, collectionId = "" }: UploadZoneProps) {
   const [dragging, setDragging] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [urlInput, setUrlInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const updateEntry = useCallback((id: string, patch: Partial<FileEntry>) => {
+    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  }, []);
 
   const process = useCallback(
     async (incoming: File[]) => {
@@ -38,7 +86,6 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
       const entries: FileEntry[] = pdfs.map((file) => ({
         id: `${file.name}-${Date.now()}-${Math.random()}`,
         name: file.name,
-        file,
         status: "uploading",
         progress: 0,
       }));
@@ -46,45 +93,27 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
       setFiles((prev) => [...prev, ...entries]);
 
       for (const entry of entries) {
-        const { id } = entry;
-        let progress = 0;
-        const tick = setInterval(() => {
-          progress = Math.min(progress + Math.random() * 18, 88);
-          setFiles((prev) =>
-            prev.map((f) => (f.id === id ? { ...f, progress } : f))
-          );
-        }, 180);
-
+        const { id, name } = entry;
         try {
-          const result = await ingestPdf(entry.file!, collectionId);
-          clearInterval(tick);
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === id
-                ? { ...f, status: "done", progress: 100, chunks: result.chunks }
-                : f
-            )
+          // Upload the file — server returns immediately with a job_id
+          const { job_id } = await ingestPdf(
+            pdfs.find((f) => f.name === name)!,
+            collectionId,
           );
+          updateEntry(id, { status: "queued", progress: 2 });
+
+          await pollJob(job_id, (patch) => updateEntry(id, patch));
           onIngested?.();
         } catch (err) {
-          clearInterval(tick);
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === id
-                ? {
-                    ...f,
-                    status: "error",
-                    progress: 0,
-                    error:
-                      err instanceof Error ? err.message : "Upload failed",
-                  }
-                : f
-            )
-          );
+          updateEntry(id, {
+            status: "error",
+            progress: 0,
+            error: err instanceof Error ? err.message : "Upload failed",
+          });
         }
       }
     },
-    [onIngested, collectionId]
+    [collectionId, onIngested, updateEntry],
   );
 
   const submitUrl = useCallback(async () => {
@@ -93,40 +122,27 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
     setUrlInput("");
 
     const id = `url-${Date.now()}-${Math.random()}`;
-    const entry: FileEntry = { id, name: url, status: "uploading", progress: 0 };
-    setFiles((prev) => [...prev, entry]);
-
-    let progress = 0;
-    const tick = setInterval(() => {
-      progress = Math.min(progress + Math.random() * 18, 88);
-      setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, progress } : f)));
-    }, 180);
+    setFiles((prev) => [
+      ...prev,
+      { id, name: url, status: "uploading", progress: 0 },
+    ]);
 
     try {
-      const result = await ingestUrl(url, collectionId);
-      clearInterval(tick);
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === id ? { ...f, status: "done", progress: 100, chunks: result.chunks } : f
-        )
-      );
+      const { job_id } = await ingestUrl(url, collectionId);
+      updateEntry(id, { status: "queued", progress: 2 });
+
+      await pollJob(job_id, (patch) => updateEntry(id, patch));
       onIngested?.();
     } catch (err) {
-      clearInterval(tick);
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === id
-            ? { ...f, status: "error", progress: 0, error: err instanceof Error ? err.message : "Ingest failed" }
-            : f
-        )
-      );
+      updateEntry(id, {
+        status: "error",
+        progress: 0,
+        error: err instanceof Error ? err.message : "Ingest failed",
+      });
     }
-  }, [urlInput, collectionId, onIngested]);
+  }, [urlInput, collectionId, onIngested, updateEntry]);
 
-  const onDragOver = (e: DragEvent) => {
-    e.preventDefault();
-    setDragging(true);
-  };
+  const onDragOver = (e: DragEvent) => { e.preventDefault(); setDragging(true); };
   const onDragLeave = () => setDragging(false);
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
@@ -162,18 +178,8 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
           className="sr-only"
         />
 
-        {/* Icon */}
-        <div
-          className={`transition-colors ${dragging ? "text-amber-500" : "text-zinc-600"}`}
-        >
-          <svg
-            width="28"
-            height="28"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-          >
+        <div className={`transition-colors ${dragging ? "text-amber-500" : "text-zinc-600"}`}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <polyline points="14 2 14 8 20 8" />
             <line x1="12" y1="18" x2="12" y2="12" />
@@ -185,9 +191,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
           <p className="text-xs font-mono text-zinc-400 uppercase tracking-[0.2em]">
             {dragging ? "Release to ingest" : "Drop PDF files"}
           </p>
-          <p className="text-xs font-mono text-zinc-700">
-            or click to browse
-          </p>
+          <p className="text-xs font-mono text-zinc-700">or click to browse</p>
         </div>
       </div>
 
@@ -223,43 +227,54 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
 }
 
 function FileRow({ entry }: { entry: FileEntry }) {
+  const isActive = entry.status === "uploading" || entry.status === "queued" || entry.status === "processing";
+  const isDone = entry.status === "done";
+  const isPartial = entry.status === "partial";
+  const isError = entry.status === "error";
+
+  const statusLabel = () => {
+    if (entry.status === "uploading") return <span className="text-amber-500 shrink-0 tabular-nums">{Math.round(entry.progress)}%</span>;
+    if (entry.status === "queued") return <span className="text-zinc-500 shrink-0">queued</span>;
+    if (entry.status === "processing") {
+      const pct = Math.round(entry.progress);
+      const total = entry.chunksTotal;
+      return (
+        <span className="text-amber-500 shrink-0 tabular-nums">
+          {total ? `${pct}%` : `${pct}%`}
+        </span>
+      );
+    }
+    if (isDone) return <span className="text-emerald-400 shrink-0">✓ {entry.chunks} chunks</span>;
+    if (isPartial) return <span className="text-amber-400 shrink-0">~ {entry.chunks} chunks</span>;
+    if (isError) return <span className="text-red-400 shrink-0">✗ failed</span>;
+  };
+
+  const barColor = isDone
+    ? "bg-emerald-500"
+    : isPartial
+    ? "bg-amber-500"
+    : isError
+    ? "bg-red-500"
+    : "bg-amber-500";
+
   return (
     <div className="border border-zinc-800 bg-zinc-900 p-2.5 font-mono text-xs">
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <span className="text-zinc-300 truncate flex-1">{entry.name}</span>
-        {entry.status === "uploading" && (
-          <span className="text-amber-500 shrink-0 tabular-nums">
-            {Math.round(entry.progress)}%
-          </span>
-        )}
-        {entry.status === "done" && (
-          <span className="text-emerald-400 shrink-0">
-            ✓ {entry.chunks} chunks
-          </span>
-        )}
-        {entry.status === "error" && (
-          <span className="text-red-400 shrink-0">✗ failed</span>
-        )}
+        {statusLabel()}
       </div>
 
-      {/* Progress track */}
       <div className="h-px bg-zinc-800">
-        {entry.status === "uploading" && (
+        {(isActive || isDone || isPartial || isError) && (
           <div
-            className="h-full bg-amber-500 transition-all duration-300"
-            style={{ width: `${entry.progress}%` }}
+            className={`h-full ${barColor} transition-all duration-300`}
+            style={{ width: `${isDone || isPartial || isError ? 100 : entry.progress}%` }}
           />
         )}
-        {entry.status === "done" && (
-          <div className="h-full bg-emerald-500 w-full" />
-        )}
-        {entry.status === "error" && (
-          <div className="h-full bg-red-500 w-full" />
-        )}
       </div>
 
-      {entry.status === "error" && entry.error && (
-        <p className="text-red-400 mt-1.5 text-xs leading-tight truncate">
+      {(isError || isPartial) && entry.error && (
+        <p className={`mt-1.5 text-xs leading-tight truncate ${isPartial ? "text-amber-400" : "text-red-400"}`}>
           {entry.error}
         </p>
       )}
