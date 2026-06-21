@@ -216,3 +216,49 @@ export async function shareChatSession(collectionId: string, sessionId: string, 
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+export interface EvalTrendPoint {
+  date: string;
+  avg_faithfulness: number;
+  avg_context_relevance: number;
+  count: number;
+}
+
+export interface WorstQuery {
+  id: string;
+  question: string;
+  faithfulness_score: number;
+  context_relevance_score: number | null;
+  total_latency_ms: number | null;
+  engine: string | null;
+  created_at: string;
+}
+
+export interface EvalStats {
+  total_queries: number;
+  scored_queries: number;
+  avg_faithfulness: number;
+  avg_context_relevance: number;
+  avg_total_latency_ms: number;
+  avg_retrieval_latency_ms: number;
+  avg_generation_latency_ms: number;
+  trend: EvalTrendPoint[];
+  worst_queries: WorstQuery[];
+}
+
+export async function getEvalStats(collectionId: string): Promise<EvalStats> {
+  const res = await fetch(`${BASE_URL}/evals/${collectionId}/stats`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listEvals(collectionId: string, limit = 50, offset = 0) {
+  const res = await fetch(
+    `${BASE_URL}/evals/${collectionId}?limit=${limit}&offset=${offset}`,
+    { headers: await authHeaders() }
+  );
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
