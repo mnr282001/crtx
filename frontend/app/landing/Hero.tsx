@@ -73,7 +73,7 @@ export default function Hero() {
             style={{ animation: "fadeUp 0.5s ease both 0.28s", opacity: 0 }}
           >
             CRTX turns document collections into on-demand knowledge. Upload
-            PDFs or URLs, ask natural-language questions, get cited answers —
+            PDFs or URLs, ask natural-language questions, get cited answers
             instantly, across your whole team.
           </p>
 

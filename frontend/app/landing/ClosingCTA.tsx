@@ -59,7 +59,7 @@ export default function ClosingCTA() {
                   href="/login"
                   className="px-8 py-4 bg-amber-500 text-zinc-950 text-sm font-mono font-bold uppercase tracking-[0.15em] hover:bg-amber-400 active:bg-amber-600 transition-colors text-center"
                 >
-                  Create workspace →
+                  Create a workspace →
                 </Link>
                 <Link
                   href="/login"
