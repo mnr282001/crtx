@@ -131,7 +131,14 @@ def list_shares(collection_id: str, user: dict = Depends(get_current_user)):
     _assert_owner(collection_id, user["sub"])
     shares = _db.table("collection_shares").select("*").eq("collection_id", collection_id).execute()
     members = _db.table("collection_members").select("*").eq("collection_id", collection_id).execute()
-    return {"shares": shares.data or [], "members": members.data or []}
+    member_rows = members.data or []
+    if member_rows:
+        user_ids = [m["user_id"] for m in member_rows]
+        auth_users = _db.auth.admin.list_users()
+        email_map = {u.id: (u.email or u.id) for u in auth_users if u.id in user_ids}
+        for m in member_rows:
+            m["email"] = email_map.get(m["user_id"], m["user_id"])
+    return {"shares": shares.data or [], "members": member_rows}
 
 
 @router.delete("/{collection_id}/shares/{share_id}")
