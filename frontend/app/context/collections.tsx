@@ -12,8 +12,9 @@ import {
   DEFAULT_PIPELINE_CONFIG,
   type PipelineConfigValue,
 } from "../components/PipelineConfig";
+import { useAuth } from "./auth";
 
-export type Collection = { id: string; name: string };
+export type Collection = { id: string; name: string; user_id?: string; shared?: boolean };
 
 type ContextValue = {
   collections: Collection[];
@@ -40,17 +41,19 @@ export function CollectionProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { user } = useAuth();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [activeId, setActiveIdState] = useState("");
   const [pipelineConfig, setPipelineConfig] = useState<PipelineConfigValue>(DEFAULT_PIPELINE_CONFIG);
   const [configSaving, setConfigSaving] = useState(false);
 
   const refresh = useCallback(async () => {
+    if (!user) { setCollections([]); return; }
     try {
       const data = await listCollections();
       setCollections(data);
     } catch {}
-  }, []);
+  }, [user]);
 
   const fetchConfig = useCallback(async (id: string) => {
     if (!id) {
@@ -66,13 +69,14 @@ export function CollectionProvider({
   }, []);
 
   useEffect(() => {
+    if (!user) return;
     const saved = localStorage.getItem("crtx-collection");
     if (saved) {
       setActiveIdState(saved);
       fetchConfig(saved);
     }
     refresh();
-  }, [refresh, fetchConfig]);
+  }, [user, refresh, fetchConfig]);
 
   const setActiveId = (id: string) => {
     setActiveIdState(id);
