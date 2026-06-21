@@ -24,14 +24,15 @@ def get_openai_client():
     return OpenAI()
 
 async def ingest_pdf(file, namespace: str = ""):
-
     pdf_bytes = await file.read()
-    fileName = os.path.basename(file.filename)
+    file_name = os.path.basename(file.filename)
+    return await ingest_pdf_from_bytes(pdf_bytes, file_name, namespace=namespace)
 
+
+async def ingest_pdf_from_bytes(pdf_bytes: bytes, file_name: str, namespace: str = ""):
     text = extract_pdf_text(pdf_bytes)
     chunks = chunk_text(text)
-    store_chunks(chunks, fileName, namespace=namespace)
-
+    store_chunks(chunks, file_name, namespace=namespace)
     return {
         "message": "Document ingested successfully",
         "chunks": len(chunks)

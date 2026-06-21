@@ -148,6 +148,25 @@ def remove_member(collection_id: str, member_id: str, user: dict = Depends(get_c
     return {"removed": member_id}
 
 
+@router.get("/{collection_id}/documents")
+def list_documents(collection_id: str, user: dict = Depends(get_current_user)):
+    if not _has_access(collection_id, user["sub"]):
+        raise HTTPException(status_code=403, detail="Access denied")
+    docs_res = _db.table("collection_documents").select("*").eq("collection_id", collection_id).order("uploaded_at", desc=True).execute()
+    result = []
+    for doc in docs_res.data or []:
+        if doc["source_type"] == "pdf" and doc.get("storage_path"):
+            try:
+                signed = _db.storage.from_("documents").create_signed_url(doc["storage_path"], 3600)
+                doc["open_url"] = signed.signed_url if hasattr(signed, "signed_url") else (signed.get("signedURL") or signed.get("signedUrl") or "")
+            except Exception:
+                doc["open_url"] = None
+        elif doc["source_type"] == "url":
+            doc["open_url"] = doc.get("url")
+        result.append(doc)
+    return result
+
+
 @router.post("/join/{share_token}")
 def join_via_share(share_token: str, user: dict = Depends(get_current_user)):
     share_res = _db.table("collection_shares").select("*").eq("share_token", share_token).execute()

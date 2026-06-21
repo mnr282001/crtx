@@ -5,9 +5,11 @@ import { useCollections } from "./context/collections";
 import UploadZone from "./components/UploadZone";
 import ChatInterface from "./components/ChatInterface";
 import PipelineConfig from "./components/PipelineConfig";
+import DocumentList from "./components/DocumentList";
 
 export default function Home() {
   const [tab, setTab] = useState<"docs" | "chat">("chat");
+  const [refreshKey, setRefreshKey] = useState(0);
   const { activeId, collections, pipelineConfig, savePipelineConfig, configSaving } = useCollections();
   const activeCollection = collections.find((c) => c.id === activeId);
   const canIngest = !activeCollection || !activeCollection.shared || activeCollection.permission === "ingest";
@@ -56,16 +58,19 @@ export default function Home() {
               Documents
             </p>
           </div>
-          <div className="p-4">
+          <div className="p-4 flex flex-col gap-4">
             {canIngest ? (
               <UploadZone
-                onIngested={() => setTab("chat")}
+                onIngested={() => { setRefreshKey((k) => k + 1); setTab("chat"); }}
                 collectionId={activeId}
               />
             ) : (
               <p className="text-xs font-mono text-zinc-600 uppercase tracking-[0.15em]">
                 Query only — no upload access
               </p>
+            )}
+            {activeId && (
+              <DocumentList collectionId={activeId} refreshKey={refreshKey} />
             )}
           </div>
 
