@@ -7,6 +7,7 @@ from app.config import (
 from app.routers import (
     chat,
     collections,
+    evals,
     ingest,
     query
 )
@@ -38,4 +39,9 @@ app.include_router(
 app.include_router(
     chat.router,
     prefix="/chat"
+)
+
+app.include_router(
+    evals.router,
+    prefix="/evals"
 )
