@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from supabase import create_client
 from openai import OpenAI
@@ -8,6 +8,7 @@ from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY, OPENAI_API_KEY
 from app.auth import get_current_user
 from app.services.langchain_service import ask_question_langchain
 from app.services.llamaindex_service import ask_question_llamaindex
+from app.services.eval_service import score_and_log
 
 router = APIRouter()
 
@@ -126,7 +127,7 @@ def _save_exchange(collection_id: str, user_id: str, question: str, result: dict
 
 
 @router.post("/")
-def query(request: QueryRequest, user: dict = Depends(get_current_user)):
+def query(request: QueryRequest, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     if request.collection_id and not _can_query(request.collection_id, user["sub"]):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -147,4 +148,20 @@ def query(request: QueryRequest, user: dict = Depends(get_current_user)):
         )
 
     _save_exchange(request.collection_id, user["sub"], request.question, result, request.session_id)
-    return result
+
+    background_tasks.add_task(
+        score_and_log,
+        collection_id=request.collection_id,
+        session_id=request.session_id,
+        user_id=user["sub"],
+        question=request.question,
+        sources=result.get("sources", []),
+        answer=result.get("answer", ""),
+        retrieval_ms=result.get("_retrieval_ms", 0),
+        generation_ms=result.get("_generation_ms", 0),
+        engine=engine,
+        retrieval_strategy=config.get("retrieval_strategy", "similarity"),
+        top_k=config.get("top_k", 5),
+    )
+
+    return {"answer": result["answer"], "sources": result["sources"]}
