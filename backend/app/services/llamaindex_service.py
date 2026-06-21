@@ -18,13 +18,14 @@ def ask_question_llamaindex(question: str, namespace: str = "", config: Optional
         from llama_index.embeddings.openai import OpenAIEmbedding
         from llama_index.llms.openai import OpenAI as LlamaOpenAI
         from llama_index.vector_stores.pinecone import PineconeVectorStore
-    except ImportError as e:
+    except (ImportError, TypeError) as e:
         raise HTTPException(
             status_code=500,
             detail=(
-                "LlamaIndex packages are not installed. "
-                "Run: pip install llama-index-core llama-index-vector-stores-pinecone "
-                "llama-index-llms-openai llama-index-embeddings-openai"
+                "LlamaIndex could not be loaded. "
+                "Ensure llama-index-core<0.12.0 is installed for Python 3.9 compatibility: "
+                "pip install 'llama-index-core<0.12.0' 'llama-index-vector-stores-pinecone<0.4.0' "
+                "'llama-index-llms-openai<0.3.0' 'llama-index-embeddings-openai<0.3.0'"
             ),
         ) from e
 
