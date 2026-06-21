@@ -155,6 +155,8 @@ def remove_member(collection_id: str, member_id: str, user: dict = Depends(get_c
     if member_res.data:
         removed_user_id = member_res.data[0]["user_id"]
         _db.table("collection_members").delete().eq("id", member_id).eq("collection_id", collection_id).execute()
+        # Delete sessions (cascades to their messages), then any sessionless messages
+        _db.table("chat_sessions").delete().eq("collection_id", collection_id).eq("user_id", removed_user_id).execute()
         _db.table("chat_messages").delete().eq("collection_id", collection_id).eq("user_id", removed_user_id).execute()
     return {"removed": member_id}
 
