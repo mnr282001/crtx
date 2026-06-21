@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useCollections } from "../context/collections";
 import { useAuth } from "../context/auth";
+import { useTab } from "../context/tab";
 
 export default function NavBar() {
   const { collections, activeId, setActiveId } = useCollections();
   const { user, signOut } = useAuth();
+  const { tab, setTab } = useTab();
+  const isAdmin = user?.app_metadata?.is_admin === true;
 
   return (
     <header className="shrink-0 border-b border-zinc-800 px-4 sm:px-5 h-11 flex items-center gap-3 sm:gap-4 bg-zinc-950">
@@ -40,6 +43,21 @@ export default function NavBar() {
             Manage
           </Link>
         </div>
+      )}
+
+      {isAdmin && activeId && (
+        <button
+          onClick={() => setTab(tab === "eval" ? "chat" : "eval")}
+          className={[
+            "hidden md:flex items-center gap-1.5 text-xs font-mono uppercase tracking-[0.1em] transition-colors",
+            tab === "eval"
+              ? "text-amber-500"
+              : "text-zinc-500 hover:text-zinc-300",
+          ].join(" ")}
+        >
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" />
+          Evals
+        </button>
       )}
 
       <div className="ml-auto flex items-center gap-3">

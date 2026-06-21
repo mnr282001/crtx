@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useCollections } from "./context/collections";
 import { useAuth } from "./context/auth";
+import { useTab } from "./context/tab";
 import UploadZone from "./components/UploadZone";
 import ChatInterface from "./components/ChatInterface";
 import PipelineConfig from "./components/PipelineConfig";
@@ -11,7 +12,7 @@ import EvalDashboard from "./components/EvalDashboard";
 import LandingPage from "./landing/LandingPage";
 
 export default function Home() {
-  const [tab, setTab] = useState<"docs" | "chat" | "eval">("chat");
+  const { tab, setTab } = useTab();
   const [refreshKey, setRefreshKey] = useState(0);
   const { user, loading } = useAuth();
   const { activeId, collections, pipelineConfig, savePipelineConfig, configSaving } = useCollections();
@@ -130,32 +131,11 @@ export default function Home() {
               tab === "eval" ? "flex" : "hidden",
             ].join(" ")}
           >
-            {/* Desktop eval tab button */}
-            <div className="hidden md:flex shrink-0 items-center gap-4 px-4 border-b border-zinc-800">
-              <button
-                onClick={() => setTab("chat")}
-                className="py-2.5 text-xs font-mono uppercase tracking-[0.15em] text-zinc-500 hover:text-zinc-300 transition-colors"
-              >
-                ← Back to Chat
-              </button>
-            </div>
             <EvalDashboard collectionId={activeId} />
           </main>
         )}
       </div>
 
-      {/* Desktop eval tab trigger — shown in docs sidebar header on md+ */}
-      {isAdmin && activeId && tab !== "eval" && (
-        <div className="hidden md:block fixed bottom-4 right-4 z-10">
-          <button
-            onClick={() => setTab("eval")}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded-full text-[10px] font-mono text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors shadow-lg"
-          >
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Evals
-          </button>
-        </div>
-      )}
     </div>
   );
 }
