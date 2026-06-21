@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCollections } from "./context/collections";
+import { useAuth } from "./context/auth";
 import UploadZone from "./components/UploadZone";
 import ChatInterface from "./components/ChatInterface";
 import PipelineConfig from "./components/PipelineConfig";
@@ -10,9 +11,11 @@ import DocumentList from "./components/DocumentList";
 export default function Home() {
   const [tab, setTab] = useState<"docs" | "chat">("chat");
   const [refreshKey, setRefreshKey] = useState(0);
+  const { user } = useAuth();
   const { activeId, collections, pipelineConfig, savePipelineConfig, configSaving } = useCollections();
   const activeCollection = collections.find((c) => c.id === activeId);
   const canIngest = !activeCollection || !activeCollection.shared || activeCollection.permission === "ingest";
+  const isAdmin = user?.app_metadata?.is_admin === true;
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-950 text-zinc-100 min-h-0">
@@ -74,11 +77,13 @@ export default function Home() {
             )}
           </div>
 
-          <PipelineConfig
-            config={pipelineConfig}
-            saving={configSaving}
-            onChange={savePipelineConfig}
-          />
+          {isAdmin && (
+            <PipelineConfig
+              config={pipelineConfig}
+              saving={configSaving}
+              onChange={savePipelineConfig}
+            />
+          )}
         </aside>
 
         {/* Main — chat */}

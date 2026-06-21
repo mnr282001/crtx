@@ -73,7 +73,9 @@ export function CollectionProvider({
     const saved = localStorage.getItem("crtx-collection");
     if (saved) {
       setActiveIdState(saved);
-      fetchConfig(saved);
+      if (user.app_metadata?.is_admin === true) {
+        fetchConfig(saved);
+      }
     }
     refresh();
   }, [user, refresh, fetchConfig]);
@@ -81,7 +83,11 @@ export function CollectionProvider({
   const setActiveId = (id: string) => {
     setActiveIdState(id);
     localStorage.setItem("crtx-collection", id);
-    fetchConfig(id);
+    if (user?.app_metadata?.is_admin === true) {
+      fetchConfig(id);
+    } else {
+      setPipelineConfig(DEFAULT_PIPELINE_CONFIG);
+    }
   };
 
   const savePipelineConfig = async (config: PipelineConfigValue) => {

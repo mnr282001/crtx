@@ -39,6 +39,11 @@ def _assert_owner(collection_id: str, user_id: str):
         raise HTTPException(status_code=403, detail="Not the collection owner")
 
 
+def _assert_admin(user: dict):
+    if not user.get("app_metadata", {}).get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
 def _has_access(collection_id: str, user_id: str) -> bool:
     own = _db.table("collections").select("id").eq("id", collection_id).eq("user_id", user_id).execute()
     if own.data:
@@ -96,8 +101,7 @@ def delete_collection(collection_id: str, user: dict = Depends(get_current_user)
 
 @router.get("/{collection_id}/config")
 def get_collection_config(collection_id: str, user: dict = Depends(get_current_user)):
-    if not _has_access(collection_id, user["sub"]):
-        raise HTTPException(status_code=403, detail="Access denied")
+    _assert_admin(user)
     res = _db.table("collections").select("config").eq("id", collection_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Collection not found")
@@ -106,7 +110,7 @@ def get_collection_config(collection_id: str, user: dict = Depends(get_current_u
 
 @router.put("/{collection_id}/config")
 def update_collection_config(collection_id: str, config: PipelineConfig, user: dict = Depends(get_current_user)):
-    _assert_owner(collection_id, user["sub"])
+    _assert_admin(user)
     res = _db.table("collections").update({"config": config.model_dump()}).eq("id", collection_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Collection not found")
