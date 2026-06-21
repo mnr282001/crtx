@@ -1,10 +1,11 @@
+import os
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from supabase import create_client
 
 from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY
 from app.auth import get_current_user
-from app.services.rag_service import ingest_pdf, ingest_url as _ingest_url
+from app.services.rag_service import ingest_pdf_from_bytes, ingest_url as _ingest_url
 
 router = APIRouter()
 
@@ -36,11 +37,50 @@ async def ingest(
 ):
     if not _can_ingest(collection_id, user["sub"]):
         raise HTTPException(status_code=403, detail="Ingest permission required")
-    return await ingest_pdf(file, namespace=collection_id)
+
+    pdf_bytes = await file.read()
+    file_name = os.path.basename(file.filename or "document.pdf")
+
+    result = await ingest_pdf_from_bytes(pdf_bytes, file_name, namespace=collection_id)
+
+    if collection_id:
+        storage_path = f"{collection_id}/{file_name}"
+        try:
+            _db.storage.from_("documents").upload(
+                path=storage_path,
+                file=pdf_bytes,
+                file_options={"content-type": "application/pdf", "upsert": "true"},
+            )
+        except Exception:
+            storage_path = None
+
+        _db.table("collection_documents").insert({
+            "collection_id": collection_id,
+            "name": file_name,
+            "source_type": "pdf",
+            "storage_path": storage_path,
+            "chunk_count": result["chunks"],
+            "uploaded_by": user["sub"],
+        }).execute()
+
+    return result
 
 
 @router.post("/url")
 async def ingest_from_url(request: UrlIngestRequest, user: dict = Depends(get_current_user)):
     if not _can_ingest(request.collection_id, user["sub"]):
         raise HTTPException(status_code=403, detail="Ingest permission required")
-    return await _ingest_url(request.url, namespace=request.collection_id)
+
+    result = await _ingest_url(request.url, namespace=request.collection_id)
+
+    if request.collection_id:
+        _db.table("collection_documents").insert({
+            "collection_id": request.collection_id,
+            "name": request.url,
+            "source_type": "url",
+            "url": request.url,
+            "chunk_count": result["chunks"],
+            "uploaded_by": user["sub"],
+        }).execute()
+
+    return result

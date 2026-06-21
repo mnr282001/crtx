@@ -128,6 +128,14 @@ export async function removeMember(collectionId: string, memberId: string) {
   return res.json();
 }
 
+export async function listDocuments(collectionId: string) {
+  const res = await fetch(`${BASE_URL}/collections/${collectionId}/documents`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function joinViaShare(shareToken: string) {
   const res = await fetch(`${BASE_URL}/collections/join/${shareToken}`, {
     method: "POST",
