@@ -15,6 +15,7 @@ import {
   createChatSession,
   getSessionMessages,
   deleteChatSession,
+  renameChatSession,
 } from "../api";
 import SourceCard from "./SourceCard";
 import ConfirmModal from "./ConfirmModal";
@@ -53,6 +54,9 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
   const [showSessions, setShowSessions] = useState(false);
   const [confirmSession, setConfirmSession] = useState<Session | null>(null);
   const [shareSession, setShareSession] = useState<Session | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -128,9 +132,27 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
     }
   };
 
-  const removeSession = (e: React.MouseEvent, session: Session) => {
-    e.stopPropagation();
+  const removeSession = (session: Session) => {
+    setOpenMenuId(null);
     setConfirmSession(session);
+  };
+
+  const startRename = (s: Session) => {
+    setOpenMenuId(null);
+    setRenamingId(s.id);
+    setRenameValue(s.title || "");
+  };
+
+  const commitRename = async (s: Session) => {
+    const newTitle = renameValue.trim();
+    setRenamingId(null);
+    if (!newTitle || newTitle === s.title || !collectionId) return;
+    try {
+      await renameChatSession(collectionId, s.id, newTitle);
+      setSessions((prev) => prev.map((x) => x.id === s.id ? { ...x, title: newTitle } : x));
+    } catch {
+      // silently ignore
+    }
   };
 
   const doRemoveSession = async () => {
@@ -266,31 +288,63 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                 key={s.id}
                 onClick={() => selectSession(s)}
                 className={[
-                  "group flex items-start gap-1 px-3 py-2.5 cursor-pointer border-b border-zinc-900 transition-colors",
+                  "group relative flex items-center gap-1 px-3 py-2.5 cursor-pointer border-b border-zinc-900 transition-colors",
                   s.id === activeSessionId
                     ? "bg-zinc-800 border-l-2 border-l-amber-500"
                     : "hover:bg-zinc-900",
                 ].join(" ")}
               >
-                <p className={[
-                  "flex-1 min-w-0 text-xs font-mono leading-snug break-words",
-                  s.id === activeSessionId ? "text-zinc-100" : "text-zinc-400",
-                ].join(" ")}>
-                  {s.title || "New Chat"}
-                </p>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShareSession(s); }}
-                  title="Share chat"
-                  className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-amber-400 text-[10px] mt-0.5 transition-all shrink-0"
-                >
-                  ↗
-                </button>
-                <button
-                  onClick={(e) => removeSession(e, s)}
-                  className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 text-[10px] mt-0.5 transition-all shrink-0"
-                >
-                  ×
-                </button>
+                {renamingId === s.id ? (
+                  <input
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onBlur={() => commitRename(s)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); commitRename(s); }
+                      if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex-1 min-w-0 text-xs font-mono bg-transparent border-b border-amber-500/60 text-zinc-100 outline-none"
+                  />
+                ) : (
+                  <p className={[
+                    "flex-1 min-w-0 text-xs font-mono leading-snug break-words",
+                    s.id === activeSessionId ? "text-zinc-100" : "text-zinc-400",
+                  ].join(" ")}>
+                    {s.title || "New Chat"}
+                  </p>
+                )}
+
+                {/* 3-dot menu */}
+                <div className="relative shrink-0">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === s.id ? null : s.id); }}
+                    className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-zinc-200 text-sm leading-none px-0.5 transition-all"
+                    title="Options"
+                  >
+                    ⋮
+                  </button>
+                  {openMenuId === s.id && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => setOpenMenuId(null)} />
+                      <div className="absolute right-0 top-5 z-30 bg-zinc-900 border border-zinc-700 shadow-xl min-w-[110px] py-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); startRename(s); }}
+                          className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+                        >
+                          Rename
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeSession(s); }}
+                          className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-red-400 hover:bg-zinc-800 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -307,7 +361,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
 
       {/* Chat area */}
       <div className="flex flex-col flex-1 min-w-0 min-h-0">
-        {/* Mobile header with toggle + session title */}
+        {/* Mobile header */}
         <div className="md:hidden flex items-center gap-2 px-3 py-2 border-b border-zinc-800 shrink-0">
           <button
             onClick={() => setShowSessions((v) => !v)}
@@ -318,6 +372,14 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
           {activeSession && (
             <p className="text-xs font-mono text-zinc-500 truncate flex-1">{activeSession.title || "New Chat"}</p>
           )}
+          {activeSession && (
+            <button
+              onClick={() => setShareSession(activeSession)}
+              className="text-[10px] font-mono text-zinc-500 hover:text-amber-400 uppercase tracking-[0.15em] shrink-0 transition-colors"
+            >
+              ↗ Share
+            </button>
+          )}
           <button
             onClick={newChat}
             className="text-[10px] font-mono text-amber-500 hover:text-amber-400 uppercase tracking-[0.15em] shrink-0"
@@ -325,6 +387,49 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
             + New
           </button>
         </div>
+
+        {/* Desktop title bar */}
+        {activeSession && (
+          <div className="hidden md:flex items-center justify-between px-4 py-2.5 border-b border-zinc-800 shrink-0">
+            <span className="text-xs font-mono text-zinc-300 truncate">{activeSession.title || "New Chat"}</span>
+            <div className="flex items-center gap-3 shrink-0 ml-3">
+              <button
+                onClick={() => setShareSession(activeSession)}
+                className="text-[10px] font-mono text-zinc-500 hover:text-amber-400 uppercase tracking-[0.15em] transition-colors"
+              >
+                ↗ Share
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setOpenMenuId(openMenuId === "__titlebar__" ? null : "__titlebar__")}
+                  className="text-zinc-500 hover:text-zinc-200 text-sm leading-none px-0.5 transition-colors"
+                  title="Options"
+                >
+                  ⋮
+                </button>
+                {openMenuId === "__titlebar__" && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setOpenMenuId(null)} />
+                    <div className="absolute right-0 top-6 z-30 bg-zinc-900 border border-zinc-700 shadow-xl min-w-[110px] py-1">
+                      <button
+                        onClick={() => { startRename(activeSession); }}
+                        className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+                      >
+                        Rename
+                      </button>
+                      <button
+                        onClick={() => { setOpenMenuId(null); removeSession(activeSession); }}
+                        className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-red-400 hover:bg-zinc-800 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Message thread */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col gap-4 sm:gap-5 min-h-0 scroll-smooth">

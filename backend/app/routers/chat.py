@@ -14,6 +14,10 @@ class ShareSessionRequest(BaseModel):
     target_user_id: str
 
 
+class UpdateSessionRequest(BaseModel):
+    title: str
+
+
 def _can_query(collection_id: str, user_id: str) -> bool:
     own = _db.table("collections").select("id").eq("id", collection_id).eq("user_id", user_id).execute()
     if own.data:
@@ -65,6 +69,14 @@ def get_session_messages(collection_id: str, session_id: str, user: dict = Depen
         .execute()
     )
     return res.data or []
+
+
+@router.patch("/{collection_id}/sessions/{session_id}")
+def update_session(collection_id: str, session_id: str, req: UpdateSessionRequest, user: dict = Depends(get_current_user)):
+    _assert_session_owner(session_id, collection_id, user["sub"])
+    title = req.title.strip()[:100]
+    _db.table("chat_sessions").update({"title": title}).eq("id", session_id).execute()
+    return {"updated": session_id, "title": title}
 
 
 @router.delete("/{collection_id}/sessions/{session_id}")

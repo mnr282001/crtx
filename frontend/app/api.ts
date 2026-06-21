@@ -180,6 +180,16 @@ export async function getSessionMessages(collectionId: string, sessionId: string
   return res.json();
 }
 
+export async function renameChatSession(collectionId: string, sessionId: string, title: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions/${sessionId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function deleteChatSession(collectionId: string, sessionId: string) {
   const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions/${sessionId}`, {
     method: "DELETE",
