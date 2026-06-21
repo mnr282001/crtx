@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useCollections } from "../context/collections";
 import { useAuth } from "../context/auth";
-import { createCollection, deleteCollection, createShare, listShares, deleteShare } from "../api";
+import { createCollection, deleteCollection, createShare, listShares, deleteShare, removeMember } from "../api";
 
 type Share = { id: string; share_token: string; permission: "query" | "ingest"; created_at: string };
 type Member = { id: string; user_id: string; permission: "query" | "ingest"; joined_at: string };
@@ -43,6 +43,11 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
 
   const revoke = async (shareId: string) => {
     await deleteShare(collectionId, shareId);
+    await load();
+  };
+
+  const remove = async (memberId: string) => {
+    await removeMember(collectionId, memberId);
     await load();
   };
 
@@ -124,6 +129,12 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
                 <span className={`text-xs font-mono px-1.5 py-0.5 ${m.permission === "ingest" ? "bg-amber-500/20 text-amber-400" : "bg-zinc-700 text-zinc-400"}`}>
                   {m.permission}
                 </span>
+                <button
+                  onClick={() => remove(m.id)}
+                  className="text-xs font-mono text-zinc-600 hover:text-red-400 transition-colors shrink-0"
+                >
+                  Remove
+                </button>
               </div>
             ))}
           </div>

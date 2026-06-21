@@ -141,6 +141,13 @@ def delete_share(collection_id: str, share_id: str, user: dict = Depends(get_cur
     return {"deleted": share_id}
 
 
+@router.delete("/{collection_id}/members/{member_id}")
+def remove_member(collection_id: str, member_id: str, user: dict = Depends(get_current_user)):
+    _assert_owner(collection_id, user["sub"])
+    _db.table("collection_members").delete().eq("id", member_id).eq("collection_id", collection_id).execute()
+    return {"removed": member_id}
+
+
 @router.post("/join/{share_token}")
 def join_via_share(share_token: str, user: dict = Depends(get_current_user)):
     share_res = _db.table("collection_shares").select("*").eq("share_token", share_token).execute()
