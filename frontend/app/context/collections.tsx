@@ -14,7 +14,7 @@ import {
 } from "../components/PipelineConfig";
 import { useAuth } from "./auth";
 
-export type Collection = { id: string; name: string; user_id?: string; shared?: boolean };
+export type Collection = { id: string; name: string; user_id?: string; shared?: boolean; permission?: "query" | "ingest" };
 
 type ContextValue = {
   collections: Collection[];

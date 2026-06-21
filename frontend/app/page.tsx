@@ -8,7 +8,9 @@ import PipelineConfig from "./components/PipelineConfig";
 
 export default function Home() {
   const [tab, setTab] = useState<"docs" | "chat">("chat");
-  const { activeId, pipelineConfig, savePipelineConfig, configSaving } = useCollections();
+  const { activeId, collections, pipelineConfig, savePipelineConfig, configSaving } = useCollections();
+  const activeCollection = collections.find((c) => c.id === activeId);
+  const canIngest = !activeCollection || !activeCollection.shared || activeCollection.permission === "ingest";
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-950 text-zinc-100 min-h-0">
@@ -55,10 +57,16 @@ export default function Home() {
             </p>
           </div>
           <div className="p-4">
-            <UploadZone
-              onIngested={() => setTab("chat")}
-              collectionId={activeId}
-            />
+            {canIngest ? (
+              <UploadZone
+                onIngested={() => setTab("chat")}
+                collectionId={activeId}
+              />
+            ) : (
+              <p className="text-xs font-mono text-zinc-600 uppercase tracking-[0.15em]">
+                Query only — no upload access
+              </p>
+            )}
           </div>
 
           <PipelineConfig

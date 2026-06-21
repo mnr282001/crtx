@@ -66,8 +66,10 @@ def list_collections(user: dict = Depends(get_current_user)):
     user_id = user["sub"]
     owned = _db.table("collections").select("*").eq("user_id", user_id).order("created_at").execute()
 
-    member_rows = _db.table("collection_members").select("collection_id").eq("user_id", user_id).execute()
-    shared_ids = [r["collection_id"] for r in (member_rows.data or [])]
+    member_rows = _db.table("collection_members").select("collection_id, permission").eq("user_id", user_id).execute()
+    member_data = member_rows.data or []
+    shared_ids = [r["collection_id"] for r in member_data]
+    member_permissions = {r["collection_id"]: r["permission"] for r in member_data}
 
     shared = []
     if shared_ids:
@@ -78,7 +80,7 @@ def list_collections(user: dict = Depends(get_current_user)):
     combined = list(owned.data or [])
     for c in shared:
         if c["id"] not in seen:
-            combined.append({**c, "shared": True})
+            combined.append({**c, "shared": True, "permission": member_permissions.get(c["id"])})
 
     return combined
 
