@@ -188,3 +188,21 @@ export async function deleteChatSession(collectionId: string, sessionId: string)
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+export async function getCollectionMembers(collectionId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/members`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function shareChatSession(collectionId: string, sessionId: string, targetUserId: string) {
+  const res = await fetch(`${BASE_URL}/chat/${collectionId}/sessions/${sessionId}/share`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+    body: JSON.stringify({ target_user_id: targetUserId }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}

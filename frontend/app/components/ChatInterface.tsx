@@ -18,6 +18,7 @@ import {
 } from "../api";
 import SourceCard from "./SourceCard";
 import ConfirmModal from "./ConfirmModal";
+import ShareChatModal from "./ShareChatModal";
 
 interface Source {
   source: string;
@@ -51,6 +52,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
   const [loading, setLoading] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
   const [confirmSession, setConfirmSession] = useState<Session | null>(null);
+  const [shareSession, setShareSession] = useState<Session | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -221,6 +223,13 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
         onCancel={() => setConfirmSession(null)}
       />
     )}
+    {shareSession && collectionId && (
+      <ShareChatModal
+        collectionId={collectionId}
+        session={shareSession}
+        onClose={() => setShareSession(null)}
+      />
+    )}
     <div className="flex h-full min-h-0">
       {/* Sessions panel — desktop always visible, mobile overlay */}
       <aside
@@ -263,6 +272,13 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                 ].join(" ")}>
                   {s.title}
                 </p>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShareSession(s); }}
+                  title="Share chat"
+                  className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-amber-400 text-[10px] mt-0.5 transition-all shrink-0"
+                >
+                  ↗
+                </button>
                 <button
                   onClick={(e) => removeSession(e, s)}
                   className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 text-[10px] mt-0.5 transition-all shrink-0"
