@@ -47,7 +47,7 @@ class QueryRequest(BaseModel):
     session_id: str = ""
 
 
-_TITLE_MAX = 40
+_TITLE_MAX = 28
 _TITLE_SYSTEM = (
     "You generate very short chat titles. "
     f"Rules: respond with ONLY the title, no quotes, no punctuation at the end, max {_TITLE_MAX} characters."

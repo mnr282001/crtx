@@ -273,7 +273,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                 ].join(" ")}
               >
                 <p className={[
-                  "flex-1 text-xs font-mono leading-snug truncate",
+                  "flex-1 min-w-0 text-xs font-mono leading-snug break-words",
                   s.id === activeSessionId ? "text-zinc-100" : "text-zinc-400",
                 ].join(" ")}>
                   {s.title || "New Chat"}

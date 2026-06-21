@@ -97,9 +97,9 @@ export default function ShareChatModal({
       <div className="w-full max-w-sm bg-zinc-900 border border-zinc-700 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-          <div className="min-w-0">
+          <div className="flex-1 min-w-0">
             <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">Share Chat</p>
-            <p className="text-sm font-mono text-zinc-100 truncate">{session.title || "Untitled"}</p>
+            <p className="text-sm font-mono text-zinc-100">{session.title || "Untitled"}</p>
           </div>
           <button
             onClick={onClose}
