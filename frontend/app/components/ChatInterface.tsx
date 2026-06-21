@@ -8,7 +8,7 @@ import {
   type ChangeEvent,
 } from "react";
 import ReactMarkdown from "react-markdown";
-import { queryQuestion } from "../api";
+import { queryQuestion, getChatHistory } from "../api";
 import SourceCard from "./SourceCard";
 
 interface Source {
@@ -30,8 +30,24 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!collectionId) {
+      setMessages([]);
+      return;
+    }
+    setMessages([]);
+    setHistoryLoading(true);
+    getChatHistory(collectionId)
+      .then((rows: Array<{ id: string; role: "user" | "assistant"; content: string; sources?: Source[] }>) => {
+        setMessages(rows.map((r) => ({ id: r.id, role: r.role, content: r.content, sources: r.sources })));
+      })
+      .catch(() => {})
+      .finally(() => setHistoryLoading(false));
+  }, [collectionId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -96,7 +112,13 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
     <div className="flex flex-col h-full">
       {/* Message thread */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col gap-4 sm:gap-5 min-h-0 scroll-smooth">
-        {messages.length === 0 && !loading && (
+        {messages.length === 0 && !loading && historyLoading && (
+          <div className="flex-1 flex items-center justify-center opacity-40">
+            <p className="text-xs font-mono text-zinc-500 uppercase tracking-[0.2em]">Loading history…</p>
+          </div>
+        )}
+
+        {messages.length === 0 && !loading && !historyLoading && (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-40">
             <div className="grid grid-cols-3 gap-1">
               {[...Array(9)].map((_, i) => (
