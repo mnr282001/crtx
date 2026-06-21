@@ -7,10 +7,11 @@ import UploadZone from "./components/UploadZone";
 import ChatInterface from "./components/ChatInterface";
 import PipelineConfig from "./components/PipelineConfig";
 import DocumentList from "./components/DocumentList";
+import EvalDashboard from "./components/EvalDashboard";
 import LandingPage from "./landing/LandingPage";
 
 export default function Home() {
-  const [tab, setTab] = useState<"docs" | "chat">("chat");
+  const [tab, setTab] = useState<"docs" | "chat" | "eval">("chat");
   const [refreshKey, setRefreshKey] = useState(0);
   const { user, loading } = useAuth();
   const { activeId, collections, pipelineConfig, savePipelineConfig, configSaving } = useCollections();
@@ -50,6 +51,19 @@ export default function Home() {
         >
           Documents
         </button>
+        {isAdmin && activeId && (
+          <button
+            onClick={() => setTab("eval")}
+            className={[
+              "flex-1 py-2.5 text-xs font-mono uppercase tracking-[0.15em] transition-colors duration-100",
+              tab === "eval"
+                ? "text-amber-500 border-b-2 border-amber-500 -mb-px"
+                : "text-zinc-500 hover:text-zinc-300",
+            ].join(" ")}
+          >
+            Evals
+          </button>
+        )}
       </div>
 
       {/* Body */}
@@ -107,7 +121,41 @@ export default function Home() {
             pipeline={pipelineConfig.engine}
           />
         </main>
+
+        {/* Main — eval dashboard (admin + collection required) */}
+        {isAdmin && activeId && (
+          <main
+            className={[
+              "flex flex-col min-w-0 min-h-0 flex-1",
+              tab === "eval" ? "flex" : "hidden",
+            ].join(" ")}
+          >
+            {/* Desktop eval tab button */}
+            <div className="hidden md:flex shrink-0 items-center gap-4 px-4 border-b border-zinc-800">
+              <button
+                onClick={() => setTab("chat")}
+                className="py-2.5 text-xs font-mono uppercase tracking-[0.15em] text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                ← Back to Chat
+              </button>
+            </div>
+            <EvalDashboard collectionId={activeId} />
+          </main>
+        )}
       </div>
+
+      {/* Desktop eval tab trigger — shown in docs sidebar header on md+ */}
+      {isAdmin && activeId && tab !== "eval" && (
+        <div className="hidden md:block fixed bottom-4 right-4 z-10">
+          <button
+            onClick={() => setTab("eval")}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded-full text-[10px] font-mono text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors shadow-lg"
+          >
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" />
+            Evals
+          </button>
+        </div>
+      )}
     </div>
   );
 }
