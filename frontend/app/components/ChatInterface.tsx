@@ -329,12 +329,14 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                     <>
                       <div className="fixed inset-0 z-20" onClick={() => setOpenMenuId(null)} />
                       <div className="absolute right-0 top-5 z-30 bg-zinc-900 border border-zinc-700 shadow-xl min-w-[110px] py-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); startRename(s); }}
-                          className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
-                        >
-                          Rename
-                        </button>
+                        {(s.id !== activeSessionId || messages.length > 0) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); startRename(s); }}
+                            className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+                          >
+                            Rename
+                          </button>
+                        )}
                         <button
                           onClick={(e) => { e.stopPropagation(); removeSession(s); }}
                           className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-red-400 hover:bg-zinc-800 transition-colors"
@@ -413,12 +415,14 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                   <>
                     <div className="fixed inset-0 z-20" onClick={() => setOpenMenuId(null)} />
                     <div className="absolute right-0 top-6 z-30 bg-zinc-900 border border-zinc-700 shadow-xl min-w-[110px] py-1">
-                      <button
-                        onClick={() => { startRename(activeSession); }}
-                        className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
-                      >
-                        Rename
-                      </button>
+                      {messages.length > 0 && (
+                        <button
+                          onClick={() => { startRename(activeSession); }}
+                          className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+                        >
+                          Rename
+                        </button>
+                      )}
                       <button
                         onClick={() => { setOpenMenuId(null); removeSession(activeSession); }}
                         className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-red-400 hover:bg-zinc-800 transition-colors"
