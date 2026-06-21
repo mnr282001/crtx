@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import Literal
+from typing import Literal, Optional
 from supabase import create_client
 
 from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY
+from app.auth import get_current_user, get_optional_user
 
 router = APIRouter()
 
@@ -26,22 +27,65 @@ class PipelineConfig(BaseModel):
     retrieval_strategy: Literal["similarity", "mmr", "threshold"] = "similarity"
 
 
+class CreateShareRequest(BaseModel):
+    permission: Literal["query", "ingest"] = "query"
+
+
+def _assert_owner(collection_id: str, user_id: str):
+    res = _db.table("collections").select("user_id").eq("id", collection_id).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Collection not found")
+    if res.data[0]["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not the collection owner")
+
+
+def _has_access(collection_id: str, user_id: str) -> bool:
+    own = _db.table("collections").select("id").eq("id", collection_id).eq("user_id", user_id).execute()
+    if own.data:
+        return True
+    member = _db.table("collection_members").select("id").eq("collection_id", collection_id).eq("user_id", user_id).execute()
+    return bool(member.data)
+
+
+# ── Collections CRUD ────────────────────────────────────────────────────────
+
 @router.post("/")
-def create_collection(req: CreateCollectionRequest):
+def create_collection(req: CreateCollectionRequest, user: dict = Depends(get_current_user)):
     if not req.name.strip():
         raise HTTPException(status_code=400, detail="Name is required")
-    res = _db.table("collections").insert({"name": req.name.strip(), "config": _DEFAULT_CONFIG}).execute()
+    res = _db.table("collections").insert({
+        "name": req.name.strip(),
+        "config": _DEFAULT_CONFIG,
+        "user_id": user["sub"],
+    }).execute()
     return res.data[0]
 
 
 @router.get("/")
-def list_collections():
-    res = _db.table("collections").select("*").order("created_at").execute()
-    return res.data
+def list_collections(user: dict = Depends(get_current_user)):
+    user_id = user["sub"]
+    owned = _db.table("collections").select("*").eq("user_id", user_id).order("created_at").execute()
+
+    member_rows = _db.table("collection_members").select("collection_id").eq("user_id", user_id).execute()
+    shared_ids = [r["collection_id"] for r in (member_rows.data or [])]
+
+    shared = []
+    if shared_ids:
+        shared_res = _db.table("collections").select("*").in_("id", shared_ids).order("created_at").execute()
+        shared = shared_res.data or []
+
+    seen = {c["id"] for c in owned.data or []}
+    combined = list(owned.data or [])
+    for c in shared:
+        if c["id"] not in seen:
+            combined.append({**c, "shared": True})
+
+    return combined
 
 
 @router.delete("/{collection_id}")
-def delete_collection(collection_id: str):
+def delete_collection(collection_id: str, user: dict = Depends(get_current_user)):
+    _assert_owner(collection_id, user["sub"])
     res = _db.table("collections").delete().eq("id", collection_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Collection not found")
@@ -49,7 +93,9 @@ def delete_collection(collection_id: str):
 
 
 @router.get("/{collection_id}/config")
-def get_collection_config(collection_id: str):
+def get_collection_config(collection_id: str, user: dict = Depends(get_current_user)):
+    if not _has_access(collection_id, user["sub"]):
+        raise HTTPException(status_code=403, detail="Access denied")
     res = _db.table("collections").select("config").eq("id", collection_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Collection not found")
@@ -57,8 +103,65 @@ def get_collection_config(collection_id: str):
 
 
 @router.put("/{collection_id}/config")
-def update_collection_config(collection_id: str, config: PipelineConfig):
+def update_collection_config(collection_id: str, config: PipelineConfig, user: dict = Depends(get_current_user)):
+    _assert_owner(collection_id, user["sub"])
     res = _db.table("collections").update({"config": config.model_dump()}).eq("id", collection_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Collection not found")
     return res.data[0]["config"]
+
+
+# ── Sharing ────────────────────────────────────────────────────────────────
+
+@router.post("/{collection_id}/shares")
+def create_share(collection_id: str, req: CreateShareRequest, user: dict = Depends(get_current_user)):
+    _assert_owner(collection_id, user["sub"])
+    res = _db.table("collection_shares").insert({
+        "collection_id": collection_id,
+        "permission": req.permission,
+        "created_by": user["sub"],
+    }).execute()
+    return res.data[0]
+
+
+@router.get("/{collection_id}/shares")
+def list_shares(collection_id: str, user: dict = Depends(get_current_user)):
+    _assert_owner(collection_id, user["sub"])
+    shares = _db.table("collection_shares").select("*").eq("collection_id", collection_id).execute()
+    members = _db.table("collection_members").select("*").eq("collection_id", collection_id).execute()
+    return {"shares": shares.data or [], "members": members.data or []}
+
+
+@router.delete("/{collection_id}/shares/{share_id}")
+def delete_share(collection_id: str, share_id: str, user: dict = Depends(get_current_user)):
+    _assert_owner(collection_id, user["sub"])
+    _db.table("collection_shares").delete().eq("id", share_id).eq("collection_id", collection_id).execute()
+    return {"deleted": share_id}
+
+
+@router.post("/join/{share_token}")
+def join_via_share(share_token: str, user: dict = Depends(get_current_user)):
+    share_res = _db.table("collection_shares").select("*").eq("share_token", share_token).execute()
+    if not share_res.data:
+        raise HTTPException(status_code=404, detail="Invalid share link")
+    share = share_res.data[0]
+
+    col_res = _db.table("collections").select("id, name, user_id").eq("id", share["collection_id"]).execute()
+    if not col_res.data:
+        raise HTTPException(status_code=404, detail="Collection not found")
+    collection = col_res.data[0]
+
+    if collection["user_id"] == user["sub"]:
+        return {"collection": collection, "already_owner": True}
+
+    existing = _db.table("collection_members").select("id, permission").eq("collection_id", share["collection_id"]).eq("user_id", user["sub"]).execute()
+    if existing.data:
+        return {"collection": collection, "permission": existing.data[0]["permission"], "already_member": True}
+
+    _db.table("collection_members").insert({
+        "collection_id": share["collection_id"],
+        "user_id": user["sub"],
+        "permission": share["permission"],
+        "share_id": share["id"],
+    }).execute()
+    return {"collection": collection, "permission": share["permission"]}
