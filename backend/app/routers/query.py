@@ -43,6 +43,16 @@ class QueryRequest(BaseModel):
     pipeline: str = ""
 
 
+def _save_exchange(collection_id: str, user_id: str, question: str, result: dict):
+    if not collection_id:
+        return
+    _db.table("chat_messages").insert([
+        {"collection_id": collection_id, "user_id": user_id, "role": "user", "content": question},
+        {"collection_id": collection_id, "user_id": user_id, "role": "assistant",
+         "content": result.get("answer", ""), "sources": result.get("sources")},
+    ]).execute()
+
+
 @router.post("/")
 def query(request: QueryRequest, user: dict = Depends(get_current_user)):
     if request.collection_id and not _can_query(request.collection_id, user["sub"]):
@@ -52,14 +62,17 @@ def query(request: QueryRequest, user: dict = Depends(get_current_user)):
     engine = request.pipeline or config.get("engine", "langchain")
 
     if engine == "llamaindex":
-        return ask_question_llamaindex(
+        result = ask_question_llamaindex(
+            request.question,
+            namespace=request.collection_id,
+            config=config,
+        )
+    else:
+        result = ask_question_langchain(
             request.question,
             namespace=request.collection_id,
             config=config,
         )
 
-    return ask_question_langchain(
-        request.question,
-        namespace=request.collection_id,
-        config=config,
-    )
+    _save_exchange(request.collection_id, user["sub"], request.question, result)
+    return result
