@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from supabase import create_client
@@ -41,16 +42,38 @@ class QueryRequest(BaseModel):
     question: str
     collection_id: str = ""
     pipeline: str = ""
+    session_id: str = ""
 
 
-def _save_exchange(collection_id: str, user_id: str, question: str, result: dict):
-    if not collection_id:
+def _save_exchange(collection_id: str, user_id: str, question: str, result: dict, session_id: str):
+    if not collection_id or not session_id:
         return
+
+    existing = _db.table("chat_messages").select("id").eq("session_id", session_id).limit(1).execute()
+    is_first = not existing.data
+
     _db.table("chat_messages").insert([
-        {"collection_id": collection_id, "user_id": user_id, "role": "user", "content": question},
-        {"collection_id": collection_id, "user_id": user_id, "role": "assistant",
-         "content": result.get("answer", ""), "sources": result.get("sources")},
+        {
+            "collection_id": collection_id,
+            "user_id": user_id,
+            "role": "user",
+            "content": question,
+            "session_id": session_id,
+        },
+        {
+            "collection_id": collection_id,
+            "user_id": user_id,
+            "role": "assistant",
+            "content": result.get("answer", ""),
+            "sources": result.get("sources"),
+            "session_id": session_id,
+        },
     ]).execute()
+
+    update: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if is_first:
+        update["title"] = question[:60]
+    _db.table("chat_sessions").update(update).eq("id", session_id).execute()
 
 
 @router.post("/")
@@ -74,5 +97,5 @@ def query(request: QueryRequest, user: dict = Depends(get_current_user)):
             config=config,
         )
 
-    _save_exchange(request.collection_id, user["sub"], request.question, result)
+    _save_exchange(request.collection_id, user["sub"], request.question, result, request.session_id)
     return result
