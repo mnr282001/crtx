@@ -4,11 +4,18 @@ import {
   useState,
   useRef,
   useEffect,
+  useCallback,
   type KeyboardEvent,
   type ChangeEvent,
 } from "react";
 import ReactMarkdown from "react-markdown";
-import { queryQuestion, getChatHistory } from "../api";
+import {
+  queryQuestion,
+  listChatSessions,
+  createChatSession,
+  getSessionMessages,
+  deleteChatSession,
+} from "../api";
 import SourceCard from "./SourceCard";
 
 interface Source {
@@ -26,59 +33,145 @@ interface Message {
   isError?: boolean;
 }
 
+interface Session {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function ChatInterface({ collectionId = "", pipeline = "" }: { collectionId?: string; pipeline?: string }) {
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showSessions, setShowSessions] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (!collectionId) {
-      setMessages([]);
-      return;
-    }
-    setMessages([]);
-    setHistoryLoading(true);
-    getChatHistory(collectionId)
-      .then((rows: Array<{ id: string; role: "user" | "assistant"; content: string; sources?: Source[] }>) => {
-        setMessages(rows.map((r) => ({ id: r.id, role: r.role, content: r.content, sources: r.sources })));
-      })
-      .catch(() => {})
-      .finally(() => setHistoryLoading(false));
-  }, [collectionId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const send = async () => {
-    const q = input.trim();
-    if (!q || loading) return;
+  const loadSessionMessages = useCallback(async (sessionId: string) => {
+    if (!collectionId) return;
+    setMessagesLoading(true);
+    setMessages([]);
+    try {
+      const rows: Array<{ id: string; role: "user" | "assistant"; content: string; sources?: Source[] }> =
+        await getSessionMessages(collectionId, sessionId);
+      setMessages(rows.map((r) => ({ id: r.id, role: r.role, content: r.content, sources: r.sources })));
+    } catch {
+      // silently ignore
+    } finally {
+      setMessagesLoading(false);
+    }
+  }, [collectionId]);
 
-    setMessages((prev) => [
-      ...prev,
-      { id: `u-${Date.now()}`, role: "user", content: q },
-    ]);
-    setInput("");
-    setLoading(true);
-
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
+  useEffect(() => {
+    if (!collectionId) {
+      setSessions([]);
+      setActiveSessionId(null);
+      setMessages([]);
+      return;
     }
 
+    let cancelled = false;
+    setSessionsLoading(true);
+    setSessions([]);
+    setActiveSessionId(null);
+    setMessages([]);
+
+    listChatSessions(collectionId)
+      .then(async (data: Session[]) => {
+        if (cancelled) return;
+        if (data.length > 0) {
+          setSessions(data);
+          setActiveSessionId(data[0].id);
+          await loadSessionMessages(data[0].id);
+        } else {
+          const session: Session = await createChatSession(collectionId);
+          if (cancelled) return;
+          setSessions([session]);
+          setActiveSessionId(session.id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setSessionsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [collectionId, loadSessionMessages]);
+
+  const selectSession = async (session: Session) => {
+    setActiveSessionId(session.id);
+    setShowSessions(false);
+    await loadSessionMessages(session.id);
+  };
+
+  const newChat = async () => {
+    if (!collectionId) return;
     try {
-      const result = await queryQuestion(q, collectionId, pipeline);
+      const session: Session = await createChatSession(collectionId);
+      setSessions((prev) => [session, ...prev]);
+      setActiveSessionId(session.id);
+      setMessages([]);
+      setShowSessions(false);
+    } catch {
+      // silently ignore
+    }
+  };
+
+  const removeSession = async (e: React.MouseEvent, session: Session) => {
+    e.stopPropagation();
+    if (!collectionId) return;
+    try {
+      await deleteChatSession(collectionId, session.id);
+      setSessions((prev) => {
+        const next = prev.filter((s) => s.id !== session.id);
+        if (activeSessionId === session.id) {
+          if (next.length > 0) {
+            setActiveSessionId(next[0].id);
+            loadSessionMessages(next[0].id);
+          } else {
+            setActiveSessionId(null);
+            setMessages([]);
+          }
+        }
+        return next;
+      });
+    } catch {
+      // silently ignore
+    }
+  };
+
+  const send = async () => {
+    const q = input.trim();
+    if (!q || loading || !activeSessionId) return;
+
+    const optimisticUser: Message = { id: `u-${Date.now()}`, role: "user", content: q };
+    setMessages((prev) => [...prev, optimisticUser]);
+    setInput("");
+    setLoading(true);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+    try {
+      const result = await queryQuestion(q, collectionId, pipeline, activeSessionId);
       setMessages((prev) => [
         ...prev,
-        {
-          id: `a-${Date.now()}`,
-          role: "assistant",
-          content: result.answer,
-          sources: result.sources,
-        },
+        { id: `a-${Date.now()}`, role: "assistant", content: result.answer, sources: result.sources },
       ]);
+      // Update session title locally if this was the first message
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== activeSessionId) return s;
+          const updated = { ...s, updated_at: new Date().toISOString() };
+          if (s.title === "New Chat") updated.title = q.slice(0, 60);
+          return updated;
+        }).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+      );
     } catch (err) {
       setMessages((prev) => [
         ...prev,
@@ -108,79 +201,166 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
     t.style.height = `${Math.min(t.scrollHeight, 144)}px`;
   };
 
+  const activeSession = sessions.find((s) => s.id === activeSessionId);
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Message thread */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col gap-4 sm:gap-5 min-h-0 scroll-smooth">
-        {messages.length === 0 && !loading && historyLoading && (
-          <div className="flex-1 flex items-center justify-center opacity-40">
-            <p className="text-xs font-mono text-zinc-500 uppercase tracking-[0.2em]">Loading history…</p>
-          </div>
-        )}
-
-        {messages.length === 0 && !loading && !historyLoading && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-40">
-            <div className="grid grid-cols-3 gap-1">
-              {[...Array(9)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-1 h-1 bg-zinc-600"
-                  style={{ opacity: 0.3 + (i % 3) * 0.2 }}
-                />
-              ))}
-            </div>
-            <p className="text-xs font-mono text-zinc-500 uppercase tracking-[0.2em]">
-              Awaiting query
-            </p>
-          </div>
-        )}
-
-        {messages.map((msg) =>
-          msg.role === "user" ? (
-            <UserBubble key={msg.id} content={msg.content} />
-          ) : (
-            <AssistantBubble key={msg.id} msg={msg} />
-          )
-        )}
-
-        {loading && <ThinkingDots />}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input bar */}
-      <div className="border-t border-zinc-800 p-2 sm:p-3 flex gap-2 items-end shrink-0 bg-zinc-950">
-        <div className="flex-1 relative">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={onInput}
-            onKeyDown={onKeyDown}
-            placeholder="Ask a question…"
-            rows={1}
-            disabled={loading}
-            className="
-              w-full bg-zinc-900 border border-zinc-700 text-zinc-100
-              text-sm font-mono placeholder:text-zinc-600
-              px-3 py-2.5 resize-none outline-none
-              focus:border-amber-500/70 transition-colors duration-100
-              disabled:opacity-40
-            "
-            style={{ minHeight: "42px" }}
-          />
+    <div className="flex h-full min-h-0">
+      {/* Sessions panel — desktop always visible, mobile overlay */}
+      <aside
+        className={[
+          "flex flex-col border-r border-zinc-800 bg-zinc-950 shrink-0",
+          "md:w-52 md:flex",
+          showSessions ? "absolute inset-y-0 left-0 z-20 w-64 flex shadow-xl" : "hidden",
+        ].join(" ")}
+      >
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-zinc-800">
+          <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.2em]">Chats</span>
+          <button
+            onClick={newChat}
+            className="text-[10px] font-mono text-amber-500 hover:text-amber-400 uppercase tracking-[0.15em] transition-colors"
+          >
+            + New
+          </button>
         </div>
-        <button
-          onClick={send}
-          disabled={loading || !input.trim()}
-          className="
-            h-[42px] px-4 sm:px-5 bg-amber-500 text-zinc-950
-            text-xs font-mono font-bold uppercase tracking-[0.15em]
-            hover:bg-amber-400 active:bg-amber-600
-            disabled:opacity-30 disabled:cursor-not-allowed
-            transition-colors duration-100 shrink-0
-          "
-        >
-          Send
-        </button>
+
+        <div className="flex-1 overflow-y-auto">
+          {sessionsLoading ? (
+            <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-[0.15em] px-3 py-3">Loading…</p>
+          ) : sessions.length === 0 ? (
+            <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-[0.15em] px-3 py-3">No chats yet</p>
+          ) : (
+            sessions.map((s) => (
+              <div
+                key={s.id}
+                onClick={() => selectSession(s)}
+                className={[
+                  "group flex items-start gap-1 px-3 py-2.5 cursor-pointer border-b border-zinc-900 transition-colors",
+                  s.id === activeSessionId
+                    ? "bg-zinc-800 border-l-2 border-l-amber-500"
+                    : "hover:bg-zinc-900",
+                ].join(" ")}
+              >
+                <p className={[
+                  "flex-1 text-xs font-mono leading-snug truncate",
+                  s.id === activeSessionId ? "text-zinc-100" : "text-zinc-400",
+                ].join(" ")}>
+                  {s.title}
+                </p>
+                <button
+                  onClick={(e) => removeSession(e, s)}
+                  className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 text-[10px] mt-0.5 transition-all shrink-0"
+                >
+                  ×
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </aside>
+
+      {/* Mobile overlay backdrop */}
+      {showSessions && (
+        <div
+          className="md:hidden fixed inset-0 z-10 bg-black/60"
+          onClick={() => setShowSessions(false)}
+        />
+      )}
+
+      {/* Chat area */}
+      <div className="flex flex-col flex-1 min-w-0 min-h-0">
+        {/* Mobile header with toggle + session title */}
+        <div className="md:hidden flex items-center gap-2 px-3 py-2 border-b border-zinc-800 shrink-0">
+          <button
+            onClick={() => setShowSessions((v) => !v)}
+            className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.15em] hover:text-zinc-300 transition-colors"
+          >
+            ☰ Chats
+          </button>
+          {activeSession && (
+            <p className="text-xs font-mono text-zinc-500 truncate flex-1">{activeSession.title}</p>
+          )}
+          <button
+            onClick={newChat}
+            className="text-[10px] font-mono text-amber-500 hover:text-amber-400 uppercase tracking-[0.15em] shrink-0"
+          >
+            + New
+          </button>
+        </div>
+
+        {/* Message thread */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col gap-4 sm:gap-5 min-h-0 scroll-smooth">
+          {!activeSessionId && !sessionsLoading && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-40">
+              <p className="text-xs font-mono text-zinc-500 uppercase tracking-[0.2em]">
+                {collectionId ? "Starting chat…" : "Select a collection"}
+              </p>
+            </div>
+          )}
+
+          {messagesLoading && (
+            <div className="flex-1 flex items-center justify-center opacity-40">
+              <p className="text-xs font-mono text-zinc-500 uppercase tracking-[0.2em]">Loading…</p>
+            </div>
+          )}
+
+          {!messagesLoading && messages.length === 0 && activeSessionId && !loading && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-40">
+              <div className="grid grid-cols-3 gap-1">
+                {[...Array(9)].map((_, i) => (
+                  <div key={i} className="w-1 h-1 bg-zinc-600" style={{ opacity: 0.3 + (i % 3) * 0.2 }} />
+                ))}
+              </div>
+              <p className="text-xs font-mono text-zinc-500 uppercase tracking-[0.2em]">Awaiting query</p>
+            </div>
+          )}
+
+          {messages.map((msg) =>
+            msg.role === "user" ? (
+              <UserBubble key={msg.id} content={msg.content} />
+            ) : (
+              <AssistantBubble key={msg.id} msg={msg} />
+            )
+          )}
+
+          {loading && <ThinkingDots />}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input bar */}
+        <div className="border-t border-zinc-800 p-2 sm:p-3 flex gap-2 items-end shrink-0 bg-zinc-950">
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={onInput}
+              onKeyDown={onKeyDown}
+              placeholder="Ask a question…"
+              rows={1}
+              disabled={loading || !activeSessionId}
+              className="
+                w-full bg-zinc-900 border border-zinc-700 text-zinc-100
+                text-sm font-mono placeholder:text-zinc-600
+                px-3 py-2.5 resize-none outline-none
+                focus:border-amber-500/70 transition-colors duration-100
+                disabled:opacity-40
+              "
+              style={{ minHeight: "42px" }}
+            />
+          </div>
+          <button
+            onClick={send}
+            disabled={loading || !input.trim() || !activeSessionId}
+            className="
+              h-[42px] px-4 sm:px-5 bg-amber-500 text-zinc-950
+              text-xs font-mono font-bold uppercase tracking-[0.15em]
+              hover:bg-amber-400 active:bg-amber-600
+              disabled:opacity-30 disabled:cursor-not-allowed
+              transition-colors duration-100 shrink-0
+            "
+          >
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -201,9 +381,7 @@ function AssistantBubble({ msg }: { msg: Message }) {
     <div className="flex flex-col gap-3 max-w-full sm:max-w-[88%]">
       <div className="border-l-2 border-amber-500/60 pl-3 sm:pl-4">
         {msg.isError ? (
-          <p className="text-sm leading-7 text-red-400 font-mono whitespace-pre-wrap">
-            {msg.content}
-          </p>
+          <p className="text-sm leading-7 text-red-400 font-mono whitespace-pre-wrap">{msg.content}</p>
         ) : (
           <ReactMarkdown
             components={{
@@ -232,10 +410,7 @@ function AssistantBubble({ msg }: { msg: Message }) {
             Sources · {msg.sources.length}
           </p>
           {msg.sources.map((src, i) => (
-            <SourceCard
-              key={`${src.source}-${src.chunk_index}-${i}`}
-              source={src}
-            />
+            <SourceCard key={`${src.source}-${src.chunk_index}-${i}`} source={src} />
           ))}
         </div>
       )}
