@@ -151,7 +151,11 @@ def delete_share(collection_id: str, share_id: str, user: dict = Depends(get_cur
 @router.delete("/{collection_id}/members/{member_id}")
 def remove_member(collection_id: str, member_id: str, user: dict = Depends(get_current_user)):
     _assert_owner(collection_id, user["sub"])
-    _db.table("collection_members").delete().eq("id", member_id).eq("collection_id", collection_id).execute()
+    member_res = _db.table("collection_members").select("user_id").eq("id", member_id).eq("collection_id", collection_id).execute()
+    if member_res.data:
+        removed_user_id = member_res.data[0]["user_id"]
+        _db.table("collection_members").delete().eq("id", member_id).eq("collection_id", collection_id).execute()
+        _db.table("chat_messages").delete().eq("collection_id", collection_id).eq("user_id", removed_user_id).execute()
     return {"removed": member_id}
 
 
