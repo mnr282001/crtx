@@ -1,15 +1,14 @@
-import json
-from pathlib import Path
-
 from fastapi import APIRouter
 from pydantic import BaseModel
+from supabase import create_client
 
+from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY
 from app.services.langchain_service import ask_question_langchain
 from app.services.llamaindex_service import ask_question_llamaindex
 
 router = APIRouter()
 
-_STORE = Path(__file__).resolve().parent.parent / "collections.json"
+_db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 
 _DEFAULT_CONFIG = {
     "engine": "langchain",
@@ -19,13 +18,12 @@ _DEFAULT_CONFIG = {
 
 
 def _get_collection_config(collection_id: str) -> dict:
-    if not collection_id or not _STORE.exists():
+    if not collection_id:
         return _DEFAULT_CONFIG.copy()
-    collections = json.loads(_STORE.read_text())
-    for col in collections:
-        if col["id"] == collection_id:
-            return {**_DEFAULT_CONFIG, **col.get("config", {})}
-    return _DEFAULT_CONFIG.copy()
+    res = _db.table("collections").select("config").eq("id", collection_id).execute()
+    if not res.data:
+        return _DEFAULT_CONFIG.copy()
+    return {**_DEFAULT_CONFIG, **res.data[0].get("config", {})}
 
 
 class QueryRequest(BaseModel):
