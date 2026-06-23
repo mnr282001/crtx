@@ -61,9 +61,13 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    return () => { abortControllerRef.current?.abort(); };
+    return () => {
+      abortControllerRef.current?.abort();
+      if (tickerRef.current) clearInterval(tickerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -192,7 +196,6 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
     const isFirstMessage = messages.length === 0;
     const streamingMsgId = `a-${Date.now()}`;
 
-    // Add user bubble and an empty streaming assistant bubble immediately
     setMessages((prev) => [
       ...prev,
       { id: `u-${Date.now()}`, role: "user", content: q },
@@ -205,8 +208,33 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
     const ac = new AbortController();
     abortControllerRef.current = ac;
 
-    let streamedContent = "";
-    let resolvedSources: Source[] = [];
+    // Shared state between the network stream callbacks and the typewriter interval.
+    // Using an object so both closures share the same reference.
+    const pending: string[] = [];
+    const state = { rendered: "", sources: [] as Source[], streamDone: false };
+
+    // Drain one token per tick — keeps rendering at a comfortable reading pace
+    // regardless of how fast the model sends tokens.
+    tickerRef.current = setInterval(() => {
+      const token = pending.shift();
+      if (token !== undefined) {
+        state.rendered += token;
+        setMessages((prev) =>
+          prev.map((m) => m.id === streamingMsgId ? { ...m, content: state.rendered } : m)
+        );
+      } else if (state.streamDone) {
+        clearInterval(tickerRef.current!);
+        tickerRef.current = null;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamingMsgId
+              ? { ...m, content: state.rendered, sources: state.sources, isStreaming: false }
+              : m
+          )
+        );
+        setLoading(false);
+      }
+    }, 30);
 
     try {
       await queryQuestionStream(
@@ -214,25 +242,12 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
         collectionId,
         pipeline,
         activeSessionId,
-        (meta) => {
-          resolvedSources = meta.sources;
-        },
-        (token) => {
-          streamedContent += token;
-          setMessages((prev) =>
-            prev.map((m) => m.id === streamingMsgId ? { ...m, content: streamedContent } : m)
-          );
-        },
-        (_done) => {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === streamingMsgId
-                ? { ...m, content: streamedContent, sources: resolvedSources, isStreaming: false }
-                : m
-            )
-          );
-        },
+        (meta) => { state.sources = meta.sources; },
+        (token) => { pending.push(token); },
+        // onDone: don't finalize yet — let the typewriter drain the queue first
+        (_done) => { state.streamDone = true; },
         (errMsg) => {
+          if (tickerRef.current) { clearInterval(tickerRef.current); tickerRef.current = null; }
           setMessages((prev) =>
             prev.map((m) =>
               m.id === streamingMsgId
@@ -240,6 +255,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                 : m
             )
           );
+          setLoading(false);
         },
         ac.signal,
       );
@@ -254,8 +270,16 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
           .then((data: Session[]) => setSessions(data))
           .catch(() => {});
       }
+      // setLoading(false) is intentionally NOT called here —
+      // the ticker handles it once the queue is fully drained.
     } catch (err) {
-      if ((err as Error)?.name === "AbortError") return;
+      if (tickerRef.current) { clearInterval(tickerRef.current); tickerRef.current = null; }
+      if ((err as Error)?.name === "AbortError") {
+        setMessages((prev) => prev.filter((m) => m.id !== streamingMsgId));
+        setLoading(false);
+        abortControllerRef.current = null;
+        return;
+      }
       setMessages((prev) =>
         prev.map((m) =>
           m.id === streamingMsgId
@@ -263,8 +287,8 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
             : m
         )
       );
-    } finally {
       setLoading(false);
+    } finally {
       abortControllerRef.current = null;
     }
   };
