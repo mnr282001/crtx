@@ -1,4 +1,3 @@
-import logging
 from typing import Optional
 import jwt
 from jwt import PyJWKClient
@@ -6,8 +5,6 @@ from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import SUPABASE_JWKS_URL
-
-logger = logging.getLogger(__name__)
 
 _jwks_client: Optional[PyJWKClient] = None
 
@@ -43,8 +40,7 @@ def get_current_user(
         return decode_token(credentials.credentials)
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    except Exception as e:
-        logger.error("Token validation failed: %s: %s", type(e).__name__, e)
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 

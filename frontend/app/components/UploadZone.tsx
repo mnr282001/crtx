@@ -119,6 +119,13 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
   const submitUrl = useCallback(async () => {
     const url = urlInput.trim();
     if (!url) return;
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error();
+    } catch {
+      alert("Please enter a valid http or https URL.");
+      return;
+    }
     setUrlInput("");
 
     const id = `url-${Date.now()}-${Math.random()}`;

@@ -1,12 +1,9 @@
 import json
-import logging
 
 from openai import OpenAI
 from supabase import create_client
 
 from app.config import OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SECRET_KEY
-
-logger = logging.getLogger(__name__)
 
 _client = OpenAI(api_key=OPENAI_API_KEY)
 _db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
@@ -88,7 +85,6 @@ def score_and_log(
         context_relevance = float(json.loads(r.choices[0].message.content).get("score", 0))
     except Exception as exc:
         scorer_error = str(exc)
-        logger.warning("eval scoring failed: %s", exc)
 
     try:
         _db.table("rag_evals").insert({
@@ -108,5 +104,5 @@ def score_and_log(
             "top_k": top_k,
             "scorer_error": scorer_error,
         }).execute()
-    except Exception as exc:
-        logger.warning("eval logging failed: %s", exc)
+    except Exception:
+        pass

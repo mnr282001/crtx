@@ -1,8 +1,10 @@
+import ipaddress
 import os
 import uuid
 from typing import Optional
+from urllib.parse import urlparse as _urlparse
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from supabase import create_client
 
 from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY
@@ -72,9 +74,32 @@ async def _enqueue(
     return job_id
 
 
+def _is_private_host(hostname: str) -> bool:
+    try:
+        addr = ipaddress.ip_address(hostname)
+        return addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved
+    except ValueError:
+        # hostname is a name, not an IP — allow it (DNS resolution happens in the worker)
+        lowered = hostname.lower()
+        return lowered in ("localhost",) or lowered.endswith(".local")
+
+
 class UrlIngestRequest(BaseModel):
     url: str
     collection_id: str = ""
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        parsed = _urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL must use http or https")
+        if not parsed.netloc:
+            raise ValueError("URL must include a host")
+        hostname = parsed.hostname or ""
+        if _is_private_host(hostname):
+            raise ValueError("URL must point to a public host")
+        return v
 
 
 @router.post("/")
@@ -87,7 +112,14 @@ async def ingest(
     if not _can_ingest(collection_id, user["sub"]):
         raise HTTPException(status_code=403, detail="Ingest permission required")
 
+    if file.content_type not in ("application/pdf",):
+        raise HTTPException(status_code=415, detail="Only PDF files are accepted")
+
+    MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MB
     pdf_bytes = await file.read()
+    if len(pdf_bytes) > MAX_PDF_BYTES:
+        raise HTTPException(status_code=413, detail="File exceeds 50 MB limit")
+
     file_name = os.path.basename(file.filename or "document.pdf")
 
     # Always upload to storage so the worker can download it
@@ -137,7 +169,6 @@ async def ingest_from_url(
     if not _can_ingest(body.collection_id, user["sub"]):
         raise HTTPException(status_code=403, detail="Ingest permission required")
 
-    from urllib.parse import urlparse as _urlparse
     parsed_url = _urlparse(body.url)
     source = parsed_url.netloc + parsed_url.path
 

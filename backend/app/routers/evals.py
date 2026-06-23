@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from supabase import create_client
 
 from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY
@@ -95,8 +95,8 @@ def get_eval_stats(collection_id: str, user: dict = Depends(get_current_user)):
 @router.get("/{collection_id}")
 def list_evals(
     collection_id: str,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     user: dict = Depends(get_current_user),
 ):
     if not _can_access(collection_id, user["sub"]):
