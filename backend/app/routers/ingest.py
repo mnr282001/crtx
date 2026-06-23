@@ -14,7 +14,10 @@ _db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 
 
 def _arq(request: Request):
-    return request.app.state.arq_pool
+    pool = request.app.state.arq_pool
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Redis unavailable — set REDIS_URL to enable ingestion")
+    return pool
 
 
 def _can_ingest(collection_id: str, user_id: str) -> bool:

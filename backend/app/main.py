@@ -11,9 +11,13 @@ from app.routers import chat, collections, evals, ingest, query
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.arq_pool = await create_pool(RedisSettings.from_dsn(REDIS_URL))
+    try:
+        app.state.arq_pool = await create_pool(RedisSettings.from_dsn(REDIS_URL))
+    except Exception:
+        app.state.arq_pool = None
     yield
-    await app.state.arq_pool.close()
+    if app.state.arq_pool is not None:
+        await app.state.arq_pool.close()
 
 
 app = FastAPI(lifespan=lifespan)
