@@ -58,6 +58,8 @@ export interface StreamSource {
   chunk_index: number;
   text: string;
   score: number;
+  chunk_type?: "text" | "image_description";
+  image_url?: string | null;
 }
 
 export async function queryQuestionStream(
