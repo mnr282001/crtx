@@ -201,6 +201,7 @@ async def stream_answer_langchain(
     namespace: str = "",
     config: Optional[dict] = None,
     on_done: Optional[object] = None,
+    history: Optional[list] = None,
 ) -> AsyncGenerator[str, None]:
     """
     Async generator that yields SSE-formatted strings:
@@ -227,6 +228,7 @@ async def stream_answer_langchain(
     )
 
     context = "\n\n".join(m["metadata"]["text"] for m in matches)
+    history_messages = _build_history(history or [])
     sources = [
         {
             "source": m["metadata"].get("source"),
