@@ -10,7 +10,7 @@ import {
 } from "react";
 import ReactMarkdown from "react-markdown";
 import {
-  queryQuestion,
+  queryQuestionStream,
   listChatSessions,
   createChatSession,
   getSessionMessages,
@@ -34,6 +34,7 @@ interface Message {
   content: string;
   sources?: Source[];
   isError?: boolean;
+  isStreaming?: boolean;
 }
 
 interface Session {
@@ -59,6 +60,11 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
   const [renameValue, setRenameValue] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => { abortControllerRef.current?.abort(); };
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -183,45 +189,83 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
     const q = input.trim();
     if (!q || loading || !activeSessionId) return;
 
-    // Capture before any state mutations — used to trigger title re-fetch after backend responds
     const isFirstMessage = messages.length === 0;
+    const streamingMsgId = `a-${Date.now()}`;
 
-    const optimisticUser: Message = { id: `u-${Date.now()}`, role: "user", content: q };
-    setMessages((prev) => [...prev, optimisticUser]);
+    // Add user bubble and an empty streaming assistant bubble immediately
+    setMessages((prev) => [
+      ...prev,
+      { id: `u-${Date.now()}`, role: "user", content: q },
+      { id: streamingMsgId, role: "assistant", content: "", isStreaming: true },
+    ]);
     setInput("");
     setLoading(true);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
+    const ac = new AbortController();
+    abortControllerRef.current = ac;
+
+    let streamedContent = "";
+    let resolvedSources: Source[] = [];
+
     try {
-      const result = await queryQuestion(q, collectionId, pipeline, activeSessionId);
-      setMessages((prev) => [
-        ...prev,
-        { id: `a-${Date.now()}`, role: "assistant", content: result.answer, sources: result.sources },
-      ]);
-      setSessions((prev) =>
-        prev.map((s) => {
-          if (s.id !== activeSessionId) return s;
-          return { ...s, updated_at: new Date().toISOString() };
-        }).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+      await queryQuestionStream(
+        q,
+        collectionId,
+        pipeline,
+        activeSessionId,
+        (meta) => {
+          resolvedSources = meta.sources;
+        },
+        (token) => {
+          streamedContent += token;
+          setMessages((prev) =>
+            prev.map((m) => m.id === streamingMsgId ? { ...m, content: streamedContent } : m)
+          );
+        },
+        (_done) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === streamingMsgId
+                ? { ...m, content: streamedContent, sources: resolvedSources, isStreaming: false }
+                : m
+            )
+          );
+        },
+        (errMsg) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === streamingMsgId
+                ? { ...m, content: errMsg, isError: true, isStreaming: false }
+                : m
+            )
+          );
+        },
+        ac.signal,
       );
-      // Re-fetch sessions to pull the AI-generated title the backend saved
+
+      setSessions((prev) =>
+        prev
+          .map((s) => s.id !== activeSessionId ? s : { ...s, updated_at: new Date().toISOString() })
+          .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+      );
       if (isFirstMessage && collectionId) {
         listChatSessions(collectionId)
           .then((data: Session[]) => setSessions(data))
           .catch(() => {});
       }
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `e-${Date.now()}`,
-          role: "assistant",
-          content: err instanceof Error ? err.message : "Request failed.",
-          isError: true,
-        },
-      ]);
+      if ((err as Error)?.name === "AbortError") return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === streamingMsgId
+            ? { ...m, content: err instanceof Error ? err.message : "Request failed.", isError: true, isStreaming: false }
+            : m
+        )
+      );
     } finally {
       setLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -473,7 +517,6 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
             )
           )}
 
-          {loading && <ThinkingDots />}
           <div ref={bottomRef} />
         </div>
 
@@ -533,7 +576,17 @@ function AssistantBubble({ msg }: { msg: Message }) {
   return (
     <div className="flex flex-col gap-3 max-w-full sm:max-w-[88%]">
       <div className="border-l-2 border-amber-500/60 pl-3 sm:pl-4">
-        {msg.isError ? (
+        {msg.isStreaming && !msg.content ? (
+          <div className="flex gap-1.5 items-center h-7">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="w-1.5 h-1.5 bg-amber-500/60 animate-bounce"
+                style={{ animationDelay: `${i * 140}ms` }}
+              />
+            ))}
+          </div>
+        ) : msg.isError ? (
           <p className="text-sm leading-7 text-red-400 font-mono whitespace-pre-wrap">{msg.content}</p>
         ) : (
           <ReactMarkdown
@@ -557,7 +610,7 @@ function AssistantBubble({ msg }: { msg: Message }) {
         )}
       </div>
 
-      {msg.sources && msg.sources.length > 0 && (
+      {!msg.isStreaming && msg.sources && msg.sources.length > 0 && (
         <div className="pl-3 sm:pl-4 flex flex-col gap-1">
           <p className="text-xs font-mono text-zinc-600 uppercase tracking-[0.15em] mb-1">
             Sources · {msg.sources.length}
@@ -567,22 +620,6 @@ function AssistantBubble({ msg }: { msg: Message }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function ThinkingDots() {
-  return (
-    <div className="border-l-2 border-amber-500/60 pl-4">
-      <div className="flex gap-1.5 items-center h-7">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="w-1.5 h-1.5 bg-amber-500/60 animate-bounce"
-            style={{ animationDelay: `${i * 140}ms` }}
-          />
-        ))}
-      </div>
     </div>
   );
 }
