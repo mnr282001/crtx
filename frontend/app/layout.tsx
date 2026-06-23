@@ -18,7 +18,25 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CRTX — Document Intelligence",
-  description: "RAG-powered document Q&A",
+  description:
+    "Ask anything. Get cited answers from your documents — instantly. Upload PDFs or URLs, ask natural-language questions, collaborate with your team.",
+  metadataBase: new URL("https://crtx.chat"),
+  openGraph: {
+    type: "website",
+    url: "https://crtx.chat",
+    title: "CRTX — Document Intelligence",
+    description:
+      "Ask anything. Get cited answers from your documents — instantly.",
+    siteName: "CRTX",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "CRTX — Document Intelligence" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CRTX — Document Intelligence",
+    description:
+      "Ask anything. Get cited answers from your documents — instantly.",
+    images: ["/opengraph-image"],
+  },
 };
 
 export default function RootLayout({
