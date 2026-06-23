@@ -4,8 +4,9 @@ import time
 from typing import AsyncGenerator, Optional
 
 from langchain_community.callbacks import get_openai_callback
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 import numpy as np
 
@@ -18,12 +19,37 @@ from app.observability import log_query, logger, timed
 from app.services.rag_service import raise_openai_http_error, raise_pinecone_http_error
 
 
+_SYSTEM_PROMPT = (
+    "You are a precise, knowledgeable assistant that answers questions grounded in provided document context.\n\n"
+    "Guidelines:\n"
+    "- Answer using only the information in the context. Do not invent facts or draw on outside knowledge.\n"
+    "- If the context is sufficient, answer thoroughly with appropriate depth and detail.\n"
+    "- If the context is only partially relevant, use what is available and clearly note what is missing.\n"
+    "- If the question cannot be answered from the context at all, say so directly — do not guess.\n"
+    "- Reference the specific parts of the context that support your answer when helpful.\n"
+    "- Use clear structure (bullet points, numbered lists, headers) when it improves readability.\n"
+    "- For follow-up questions, use the conversation history to understand what the user is building on."
+)
+
 _RAG_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", "Answer the user's question only using the provided context."),
+    ("system", _SYSTEM_PROMPT),
+    MessagesPlaceholder(variable_name="history", optional=True),
     ("user", "Context:\n{context}\n\nQuestion: {question}"),
 ])
 
-_MODEL = "gpt-4o-mini"
+_MODEL = "gpt-4o"
+
+
+def _build_history(history: list) -> list:
+    msgs = []
+    for msg in history:
+        role = msg.get("role")
+        content = msg.get("content", "")
+        if role == "user":
+            msgs.append(HumanMessage(content=content))
+        elif role == "assistant":
+            msgs.append(AIMessage(content=content))
+    return msgs
 
 
 def _embed_query(question: str) -> list:
@@ -108,7 +134,7 @@ def _apply_mmr(matches: list, query_vec: list, top_k: int, lambda_mult: float = 
     return [matches[i] for i in selected]
 
 
-def ask_question_langchain(question: str, namespace: str = "", config: Optional[dict] = None) -> dict:
+def ask_question_langchain(question: str, namespace: str = "", config: Optional[dict] = None, history: Optional[list] = None) -> dict:
     config = config or {}
     retrieval_strategy = config.get("retrieval_strategy", "similarity")
     top_k = config.get("top_k", TOP_K)
@@ -121,6 +147,7 @@ def ask_question_langchain(question: str, namespace: str = "", config: Optional[
     matches, embedding_ms, pinecone_ms = _retrieve(question, namespace, retrieval_strategy, top_k)
 
     context = "\n\n".join(m["metadata"]["text"] for m in matches)
+    history_messages = _build_history(history or [])
 
     llm = ChatOpenAI(model=_MODEL)
     chain = _RAG_PROMPT | llm | StrOutputParser()
@@ -128,7 +155,7 @@ def ask_question_langchain(question: str, namespace: str = "", config: Optional[
     with timed() as gen_t:
         with get_openai_callback() as cb:
             try:
-                answer = chain.invoke({"context": context, "question": question})
+                answer = chain.invoke({"context": context, "question": question, "history": history_messages})
             except OpenAIError as e:
                 raise_openai_http_error(e)
 
