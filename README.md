@@ -8,7 +8,7 @@
 
 <br />
 
-**A production-grade RAG platform — ingest any document, query it with AI, and measure answer quality.**
+**A production-grade RAG platform. Ingest any document, query it with AI, and measure answer quality.**
 
 [![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -20,7 +20,7 @@
 
 <br />
 
-<!-- VIDEO PLACEHOLDER — remove this comment and paste your Loom embed below when ready -->
+<!-- VIDEO PLACEHOLDER: remove this comment and paste your Loom embed below when ready -->
 <!-- [![Watch the demo](https://cdn.loom.com/sessions/thumbnails/YOUR_ID-with-play.gif)](https://www.loom.com/share/YOUR_ID) -->
 
 </div>
@@ -29,36 +29,36 @@
 
 ## What is CRTX?
 
-CRTX is a **multi-user Retrieval-Augmented Generation (RAG) platform** built for teams that need to query their own documents with AI — and actually trust the answers.
+CRTX is a **multi-user Retrieval-Augmented Generation (RAG) platform** built for teams that need to query their own documents with AI and actually trust the answers.
 
 Most AI chat tools are black boxes. CRTX is different: every response comes with **cited sources**, and every interaction is scored for **faithfulness** (did the answer match the retrieved context?) and **context relevance** (were the right documents retrieved?). You can watch quality trends over time on a built-in evaluation dashboard.
 
-**In plain English:** upload your PDFs or paste URLs, ask questions in natural language, get answers backed by your own content — and see exactly where each answer came from, including figures and tables.
+**In plain English:** upload your PDFs or paste URLs, ask questions in natural language, get answers backed by your own content, and see exactly where each answer came from, including figures and tables.
 
 ---
 
 ## Features
 
 ### For end users
-- **Chat with your documents** — ask anything about PDFs or web pages you've uploaded
-- **Multimodal PDFs** — embedded images are described by GPT-4o vision and become searchable; tables are extracted as structured markdown
-- **Source transparency** — every answer cites the exact chunks it drew from, with inline image rendering for figure sources
-- **Streaming responses** — answers stream token-by-token via SSE; sources appear before the first token
-- **Persistent sessions** — conversation history is saved per collection
-- **Team sharing** — share a collection with a link; control whether recipients can only read (query) or also upload (ingest)
+- **Chat with your documents**: ask anything about PDFs or web pages you've uploaded
+- **Multimodal PDFs**: embedded images are described by GPT-4o vision and become searchable; tables are extracted as structured markdown
+- **Source transparency**: every answer cites the exact chunks it drew from, with inline image rendering for figure sources
+- **Streaming responses**: answers stream token-by-token via SSE; sources appear before the first token
+- **Persistent sessions**: conversation history is saved per collection
+- **Team sharing**: share a collection with a link; control whether recipients can only read (query) or also upload (ingest)
 
 ### For technical teams
-- **Evaluation pipeline** — automatic faithfulness and context-relevance scoring via LLM-as-judge on every query
-- **Evaluation dashboard** — daily trends, average scores, and a "worst queries" view to identify retrieval failures
-- **Configurable retrieval** — swap between Similarity, MMR (Maximal Marginal Relevance), and Threshold strategies per collection; tune Top-K and chunk size
-- **Async ingestion** — PDF and URL ingestion runs in background workers (Redis/Arq) with batched upserts, retry logic, and partial-success tracking
-- **Observability** — structured JSON logs for every query and ingest event, persisted to `query_logs` and `ingest_logs` Supabase tables; includes `time_to_first_token_ms`
-- **Signed document URLs** — document access is time-limited and authenticated
-- **Idempotent ingestion** — deterministic SHA-256 vector IDs prevent duplicate vectors on re-runs
+- **Evaluation pipeline**: automatic faithfulness and context-relevance scoring via LLM-as-judge on every query
+- **Evaluation dashboard**: daily trends, average scores, and a "worst queries" view to identify retrieval failures
+- **Configurable retrieval**: swap between Similarity, MMR (Maximal Marginal Relevance), and Threshold strategies per collection; tune Top-K and chunk size
+- **Async ingestion**: PDF and URL ingestion runs in background workers (Redis/Arq) with batched upserts, retry logic, and partial-success tracking
+- **Observability**: structured JSON logs for every query and ingest event, persisted to `query_logs` and `ingest_logs` Supabase tables; includes `time_to_first_token_ms`
+- **Signed document URLs**: document access is time-limited and authenticated
+- **Idempotent ingestion**: deterministic SHA-256 vector IDs prevent duplicate vectors on re-runs
 
 ### Security & access control
 - JWT auth via Supabase (email/password; tokens validated against Supabase JWKS)
-- Next.js middleware enforces auth at the edge — unauthenticated requests redirect to `/login`
+- Next.js middleware enforces auth at the edge; unauthenticated requests redirect to `/login`
 - All API routes require a Bearer token
 - Per-collection ownership; `query` vs `ingest` share permissions
 - Input validation throughout: file type/size limits, URL scheme enforcement, UUID validation, field length caps
@@ -179,7 +179,7 @@ Log to ingest_logs table
 | RAG framework | LangChain |
 | Document parsing | PyMuPDF (PDF text + tables + images), BeautifulSoup4 (web) |
 | Background jobs | Arq + Redis (batched upserts, tenacity retries) |
-| Observability | Structured JSON logging → query_logs / ingest_logs Supabase tables |
+| Observability | Structured JSON logging to query_logs / ingest_logs Supabase tables |
 | Deployment | Railway (backend), Vercel (frontend) |
 
 ---
@@ -223,7 +223,7 @@ OPENAI_API_KEY=sk-...
 PINECONE_API_KEY=...
 PINECONE_INDEX=crtx-documents
 
-# Retrieval defaults (optional — these are the defaults)
+# Retrieval defaults (optional, defaults shown)
 EMBEDDING_MODEL=text-embedding-3-small
 EMBEDDING_DIMENSIONS=1024
 CHUNK_SIZE=1000
@@ -244,10 +244,10 @@ ALLOWED_ORIGINS=http://localhost:3000
 Start the API server and background worker:
 
 ```bash
-# Terminal 1 — API
+# Terminal 1: API
 uvicorn app.main:app --reload --port 8000
 
-# Terminal 2 — background worker
+# Terminal 2: background worker
 arq app.worker.WorkerSettings
 ```
 
@@ -318,7 +318,7 @@ All endpoints require `Authorization: Bearer <token>` unless noted.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/query/` | RAG query — returns answer + source chunks (with `chunk_type` and `image_url`) |
+| `POST` | `/query/` | RAG query, returns answer + source chunks (with `chunk_type` and `image_url`) |
 | `POST` | `/chat/{collection_id}/sessions` | Start a new chat session |
 | `GET` | `/chat/{collection_id}/sessions` | List sessions |
 | `GET` | `/chat/{collection_id}/sessions/{session_id}` | Get session message history |
@@ -328,10 +328,10 @@ All endpoints require `Authorization: Bearer <token>` unless noted.
 | `GET` | `/chat/{collection_id}/members` | List members (for session sharing) |
 
 Chat responses stream via SSE with four event types:
-- `event: metadata` — sources + retrieval latency, sent before the first token
-- `event: token` — one chunk per LLM output token
-- `event: done` — generation latency + time-to-first-token
-- `event: error` — emitted if generation fails mid-stream
+- `event: metadata`: sources + retrieval latency, sent before the first token
+- `event: token`: one chunk per LLM output token
+- `event: done`: generation latency + time-to-first-token
+- `event: error`: emitted if generation fails mid-stream
 
 </details>
 
@@ -350,7 +350,7 @@ Chat responses stream via SSE with four event types:
 ## Key Design Decisions
 
 **Why multimodal PDF extraction?**
-PDFs in the wild contain charts, diagrams, and tables that carry most of the signal but are invisible to text-only extractors. The pipeline runs three passes: table extraction (serialized to GFM markdown so structure is preserved), body text (excluding table regions to avoid duplication), and image description via GPT-4o vision. Scanned PDFs — detected by a chars-per-page heuristic — fall back to page-level vision rendering at 150 DPI.
+PDFs in the wild contain charts, diagrams, and tables that carry most of the signal but are invisible to text-only extractors. The pipeline runs three passes: table extraction (serialized to GFM markdown so structure is preserved), body text (excluding table regions to avoid duplication), and image description via GPT-4o vision. Scanned PDFs (detected by a chars-per-page heuristic) fall back to page-level vision rendering at 150 DPI.
 
 **Why deterministic vector IDs?**
 Vector IDs are SHA-256 hashes of `(collection_id, source, chunk_index)`. Re-running an ingestion job on the same document upserts identical IDs, so Pinecone deduplicates naturally with no manual cleanup step.
@@ -359,7 +359,7 @@ Vector IDs are SHA-256 hashes of `(collection_id, source, chunk_index)`. Re-runn
 Automated evaluation without ground-truth labels. Every query produces a faithfulness score (is the answer supported by the retrieved context?) and a relevance score (did we retrieve the right chunks?). This surfaces retrieval failures fast without needing human annotation.
 
 **Why MMR for retrieval?**
-Maximal Marginal Relevance trades off similarity for diversity — it avoids returning five nearly-identical chunks when a document has repeated boilerplate. This matters for legal and technical docs.
+Maximal Marginal Relevance trades off similarity for diversity; it avoids returning five nearly-identical chunks when a document has repeated boilerplate. This matters for legal and technical docs.
 
 **Why Arq/Redis for ingestion jobs?**
 PDF parsing, vision inference, and batch embedding can take tens of seconds on large files. Running it asynchronously keeps the API responsive and lets users see real-time progress (`chunks_processed` / `chunks_total`) via polling. Tenacity retries handle transient OpenAI rate limits and Pinecone 5xx errors without failing the whole job.
@@ -382,7 +382,7 @@ crtx/
 │   │   ├── auth.py              # JWT validation (PyJWT + JWKS)
 │   │   ├── config.py            # Environment config (incl. VISION_MODEL, MIN_IMAGE_BYTES)
 │   │   ├── worker.py            # Arq worker settings
-│   │   ├── observability.py     # Structured JSON logging → query_logs / ingest_logs
+│   │   ├── observability.py     # Structured JSON logging to query_logs / ingest_logs
 │   │   ├── routers/
 │   │   │   ├── chat.py          # SSE streaming + session management
 │   │   │   ├── collections.py
@@ -399,14 +399,14 @@ crtx/
 │   │       └── vector_store.py       # Pinecone client
 │   ├── requirements.txt
 │   ├── runtime.txt              # python-3.13
-│   └── Procfile                 # Railway / Heroku process definition
+│   └── Procfile                 # Railway process definition
 │
 └── frontend/
     └── app/
-        ├── page.tsx                  # Root (auth gate → landing or app)
+        ├── page.tsx                  # Root (auth gate to landing or app)
         ├── layout.tsx
         ├── api.ts                    # Typed API client (SSE + REST)
-        ├── proxy.ts                  # Next.js middleware — edge auth redirect
+        ├── proxy.ts                  # Next.js middleware, edge auth redirect
         ├── lib/
         │   └── supabase.ts           # Supabase browser client
         ├── context/
