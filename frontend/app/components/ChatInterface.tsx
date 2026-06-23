@@ -305,6 +305,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                       if (e.key === "Escape") setRenamingId(null);
                     }}
                     onClick={(e) => e.stopPropagation()}
+                    maxLength={100}
                     className="flex-1 min-w-0 text-xs font-mono bg-transparent border-b border-amber-500/60 text-zinc-100 outline-none"
                   />
                 ) : (
@@ -486,6 +487,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
               onKeyDown={onKeyDown}
               placeholder="Ask a question…"
               rows={1}
+              maxLength={5000}
               disabled={loading || !activeSessionId}
               className="
                 w-full bg-zinc-900 border border-zinc-700 text-zinc-100
