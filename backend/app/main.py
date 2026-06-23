@@ -5,7 +5,7 @@ from arq.connections import RedisSettings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import LOCAL_API_URL, REDIS_URL
+from app.config import ALLOWED_ORIGINS, REDIS_URL
 from app.routers import chat, collections, evals, ingest, query
 
 
@@ -20,7 +20,8 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[LOCAL_API_URL],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
