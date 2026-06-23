@@ -4,9 +4,7 @@ import hashlib
 import os
 from urllib.parse import urlparse
 from fastapi import HTTPException
-from langchain.text_splitter import (
-    RecursiveCharacterTextSplitter
-)
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_openai import OpenAIEmbeddings
 from openai import AuthenticationError, OpenAI, OpenAIError, RateLimitError
