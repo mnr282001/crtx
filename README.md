@@ -15,7 +15,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs&logoColor=white)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Pinecone](https://img.shields.io/badge/Pinecone-Vector_DB-00B5AD?logoColor=white)](https://pinecone.io)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o_mini-412991?logo=openai&logoColor=white)](https://openai.com)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991?logo=openai&logoColor=white)](https://openai.com)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth_%26_DB-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
 
 <br />
@@ -88,7 +88,7 @@ Most AI chat tools are black boxes. CRTX is different: every response comes with
        │              │                   │
        ▼              ▼                   ▼
   Supabase        Pinecone            OpenAI
-  Auth + PG    Vector Index        GPT-4o-mini
+  Auth + PG    Vector Index        GPT-4o
   (RLS off;    (per-collection      text-embedding
   service key)  namespacing)        -3-small
 ```
@@ -102,7 +102,7 @@ User question
 Embed question ──► Pinecone similarity search ──► Top-K chunks
                                                         │
                                                         ▼
-                                              LLM (GPT-4o-mini)
+                                              LLM (GPT-4o)
                                              with retrieved context
                                                         │
                               ┌─────────────────────────┘
@@ -126,7 +126,7 @@ Embed question ──► Pinecone similarity search ──► Top-K chunks
 | Auth | Supabase (JWT, JWKS validation) |
 | Database | Supabase PostgreSQL |
 | Vector store | Pinecone |
-| LLM | OpenAI GPT-4o-mini |
+| LLM | OpenAI GPT-4o |
 | Embeddings | OpenAI text-embedding-3-small (1024-dim) |
 | RAG framework | LangChain |
 | Document parsing | PyMuPDF (PDF), BeautifulSoup4 (web) |
