@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import fitz
 import hashlib
 import os
@@ -14,11 +15,15 @@ from app.config import (
     CHUNK_SIZE,
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL,
+    MIN_IMAGE_BYTES,
     TOP_K,
+    VISION_MODEL,
 )
 from app.db.vector_store import get_index
 
 MIN_TEXT_CHARS = 100
+# Chars-per-page threshold below which a PDF is treated as scanned
+_SCANNED_CHARS_PER_PAGE = 50
 
 
 def get_openai_client():
@@ -76,6 +81,131 @@ def extract_pdf_text(pdf_bytes):
         text += page.get_text()
 
     return text
+
+def _is_scanned_pdf(doc: fitz.Document) -> bool:
+    """Returns True when avg text per page is below the scanned-PDF threshold."""
+    if len(doc) == 0:
+        return False
+    total = sum(len(page.get_text().strip()) for page in doc)
+    return (total / len(doc)) < _SCANNED_CHARS_PER_PAGE
+
+
+def _describe_image_vision_sync(image_bytes: bytes, ext: str, client: OpenAI) -> str:
+    """Call the vision model synchronously and return a description string."""
+    mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+    b64 = base64.b64encode(image_bytes).decode()
+    resp = client.chat.completions.create(
+        model=VISION_MODEL,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+                {"type": "text", "text": (
+                    "Describe this figure, chart, graph, diagram, or image in detail "
+                    "for a research document context. "
+                    "If it contains data or statistics, extract key values, trends, and labels. "
+                    "If it contains text, transcribe it. Be specific and thorough."
+                )},
+            ],
+        }],
+        max_tokens=500,
+    )
+    return resp.choices[0].message.content
+
+
+async def _upload_image(storage, job_id: str, xref: int, ext: str, image_bytes: bytes) -> str | None:
+    """Upload image bytes to the Supabase 'images' bucket and return a public URL."""
+    path = f"{job_id}/{xref}.{ext}"
+    mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+    loop = asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(
+            None,
+            lambda: storage.from_("images").upload(
+                path, image_bytes, {"content-type": mime, "upsert": "true"}
+            ),
+        )
+        return storage.from_("images").get_public_url(path)
+    except Exception:
+        return None
+
+
+async def extract_pdf_multimodal(
+    pdf_bytes: bytes,
+    storage,
+    job_id: str,
+) -> list[dict]:
+    """
+    Extract all content from a PDF as a flat list of chunk dicts:
+        {"text": str, "chunk_type": "text"|"image_description", "image_url": str|None}
+
+    Native PDFs: text is chunked normally; embedded images are described by the
+    vision model and stored in Supabase.
+
+    Scanned PDFs (little/no extractable text): each page is rendered at 100 DPI
+    and described by the vision model (page-level fallback).
+    """
+    client = get_openai_client()
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    result: list[dict] = []
+
+    if _is_scanned_pdf(doc):
+        for page in doc:
+            try:
+                mat = fitz.Matrix(100 / 72, 100 / 72)
+                pixmap = page.get_pixmap(matrix=mat, colorspace=fitz.csRGB)
+                jpeg_bytes = pixmap.tobytes("jpeg")
+                desc = await asyncio.to_thread(
+                    _describe_image_vision_sync, jpeg_bytes, "jpeg", client
+                )
+                result.append({
+                    "text": f"[Page {page.number + 1}] {desc}",
+                    "chunk_type": "image_description",
+                    "image_url": None,
+                })
+            except Exception:
+                continue
+    else:
+        full_text = "".join(page.get_text() for page in doc)
+        for chunk in chunk_text(full_text):
+            result.append({"text": chunk, "chunk_type": "text", "image_url": None})
+
+        seen_xrefs: set[int] = set()
+        for page in doc:
+            for img_meta in page.get_images(full=True):
+                xref = img_meta[0]
+                if xref in seen_xrefs:
+                    continue
+                seen_xrefs.add(xref)
+
+                try:
+                    base_image = doc.extract_image(xref)
+                except Exception:
+                    continue
+
+                img_bytes = base_image["image"]
+                ext = base_image["ext"]
+
+                if len(img_bytes) < MIN_IMAGE_BYTES:
+                    continue
+
+                image_url = await _upload_image(storage, job_id, xref, ext, img_bytes)
+
+                try:
+                    desc = await asyncio.to_thread(
+                        _describe_image_vision_sync, img_bytes, ext, client
+                    )
+                except Exception:
+                    continue
+
+                result.append({
+                    "text": desc,
+                    "chunk_type": "image_description",
+                    "image_url": image_url,
+                })
+
+    return result
+
 
 def chunk_text(text):
 
