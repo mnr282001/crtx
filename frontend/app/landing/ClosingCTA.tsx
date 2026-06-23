@@ -7,7 +7,7 @@ export default function ClosingCTA() {
       <section className="border-t border-zinc-800 py-24 px-6 bg-zinc-950">
         <div className="max-w-7xl mx-auto">
           <div className="relative border border-zinc-800 p-10 sm:p-14 lg:p-20 overflow-hidden">
-            {/* Decorative amber glow */}
+            {/* Decorative cyan glow */}
             <div
               className="absolute pointer-events-none"
               style={{
@@ -16,7 +16,7 @@ export default function ClosingCTA() {
                 width: "400px",
                 height: "400px",
                 background:
-                  "radial-gradient(circle, rgba(245,158,11,0.1), transparent 70%)",
+                  "radial-gradient(circle, rgba(56,189,248,0.1), transparent 70%)",
               }}
             />
             {/* Grid texture */}
@@ -32,7 +32,25 @@ export default function ClosingCTA() {
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-10">
               <div className="flex flex-col gap-5 max-w-xl">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-amber-500" />
+                  <svg width="12" height="12" viewBox="0 0 28 28" fill="none" aria-hidden>
+                    <line x1="14" y1="11" x2="14" y2="2" stroke="#38bdf8" strokeWidth="1.5" />
+                    <line x1="14" y1="11" x2="6" y2="7" stroke="#38bdf8" strokeWidth="1.5" />
+                    <line x1="14" y1="11" x2="4" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+                    <line x1="14" y1="11" x2="8" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+                    <line x1="14" y1="11" x2="14" y2="26" stroke="#38bdf8" strokeWidth="1.5" />
+                    <line x1="14" y1="11" x2="21" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+                    <line x1="14" y1="11" x2="25" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+                    <line x1="14" y1="11" x2="21" y2="5" stroke="#38bdf8" strokeWidth="1.5" />
+                    <circle cx="14" cy="11" r="2.2" fill="#38bdf8" />
+                    <circle cx="14" cy="2" r="1.6" fill="#38bdf8" />
+                    <circle cx="6" cy="7" r="1.6" fill="#38bdf8" />
+                    <circle cx="4" cy="14" r="1.6" fill="#38bdf8" />
+                    <circle cx="8" cy="21" r="1.6" fill="#38bdf8" />
+                    <circle cx="14" cy="26" r="1.6" fill="#38bdf8" />
+                    <circle cx="21" cy="21" r="1.6" fill="#38bdf8" />
+                    <circle cx="25" cy="14" r="1.6" fill="#38bdf8" />
+                    <circle cx="21" cy="5" r="1.6" fill="#38bdf8" />
+                  </svg>
                   <span className="text-xs font-mono text-zinc-500 uppercase tracking-[0.3em]">
                     Ready?
                   </span>
@@ -57,7 +75,7 @@ export default function ClosingCTA() {
               <div className="flex flex-col sm:flex-row gap-3 shrink-0">
                 <Link
                   href="/login"
-                  className="px-8 py-4 bg-amber-500 text-zinc-950 text-sm font-mono font-bold uppercase tracking-[0.15em] hover:bg-amber-400 active:bg-amber-600 transition-colors text-center"
+                  className="px-8 py-4 bg-sky-400 text-zinc-950 text-sm font-mono font-bold uppercase tracking-[0.15em] hover:bg-sky-300 active:bg-sky-500 transition-colors text-center"
                 >
                   Create a workspace →
                 </Link>
@@ -77,7 +95,27 @@ export default function ClosingCTA() {
       <footer className="border-t border-zinc-900 py-8 px-6 bg-zinc-950">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-1.5 h-1.5 bg-amber-500" />
+            <svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden>
+              <line x1="14" y1="11" x2="14" y2="2" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="6" y2="7" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="4" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="8" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="14" y2="26" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="21" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="25" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="21" y2="5" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="2" x2="6" y2="7" stroke="#38bdf8" strokeWidth="0.7" />
+              <line x1="21" y1="5" x2="25" y2="14" stroke="#38bdf8" strokeWidth="0.7" />
+              <circle cx="14" cy="11" r="2.2" fill="#38bdf8" />
+              <circle cx="14" cy="2" r="1.6" fill="#38bdf8" />
+              <circle cx="6" cy="7" r="1.6" fill="#38bdf8" />
+              <circle cx="4" cy="14" r="1.6" fill="#38bdf8" />
+              <circle cx="8" cy="21" r="1.6" fill="#38bdf8" />
+              <circle cx="14" cy="26" r="1.6" fill="#38bdf8" />
+              <circle cx="21" cy="21" r="1.6" fill="#38bdf8" />
+              <circle cx="25" cy="14" r="1.6" fill="#38bdf8" />
+              <circle cx="21" cy="5" r="1.6" fill="#38bdf8" />
+            </svg>
             <span className="text-xs font-mono text-zinc-700 uppercase tracking-[0.3em]">
               CRTX
             </span>

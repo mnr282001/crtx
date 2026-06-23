@@ -43,7 +43,27 @@ export default function JoinPage() {
   return (
     <div className="flex flex-1 items-center justify-center bg-zinc-950">
       <div className="flex flex-col gap-4 items-center text-center max-w-sm px-4">
-        <div className="w-1.5 h-1.5 bg-amber-500" />
+        <svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden>
+          <line x1="14" y1="11" x2="14" y2="2" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="6" y2="7" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="4" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="8" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="14" y2="26" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="21" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="25" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="21" y2="5" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="2" x2="6" y2="7" stroke="#38bdf8" strokeWidth="0.7" />
+          <line x1="21" y1="5" x2="25" y2="14" stroke="#38bdf8" strokeWidth="0.7" />
+          <circle cx="14" cy="11" r="2.2" fill="#38bdf8" />
+          <circle cx="14" cy="2" r="1.6" fill="#38bdf8" />
+          <circle cx="6" cy="7" r="1.6" fill="#38bdf8" />
+          <circle cx="4" cy="14" r="1.6" fill="#38bdf8" />
+          <circle cx="8" cy="21" r="1.6" fill="#38bdf8" />
+          <circle cx="14" cy="26" r="1.6" fill="#38bdf8" />
+          <circle cx="21" cy="21" r="1.6" fill="#38bdf8" />
+          <circle cx="25" cy="14" r="1.6" fill="#38bdf8" />
+          <circle cx="21" cy="5" r="1.6" fill="#38bdf8" />
+        </svg>
         {status === "joining" && (
           <p className="text-sm font-mono text-zinc-400">Joining collection…</p>
         )}

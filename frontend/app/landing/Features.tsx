@@ -27,7 +27,7 @@ export default function Features() {
       <div className="max-w-7xl mx-auto flex flex-col gap-14">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-px h-5 bg-amber-500 shrink-0" />
+          <div className="w-px h-5 bg-sky-400 shrink-0" />
           <span className="text-xs font-mono text-zinc-500 uppercase tracking-[0.3em]">
             Capabilities
           </span>

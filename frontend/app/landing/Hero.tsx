@@ -13,7 +13,7 @@ export default function Hero() {
         }}
       />
 
-      {/* Amber ambient glow */}
+      {/* Cyan ambient glow */}
       <div
         className="absolute pointer-events-none"
         style={{
@@ -21,7 +21,7 @@ export default function Hero() {
           left: "55%",
           width: "600px",
           height: "600px",
-          background: "radial-gradient(circle, rgba(245,158,11,0.08), transparent 70%)",
+          background: "radial-gradient(circle, rgba(56,189,248,0.08), transparent 70%)",
           transform: "translate(-50%, -50%)",
         }}
       />
@@ -31,7 +31,7 @@ export default function Hero() {
         className="absolute inset-x-0 h-24 pointer-events-none"
         style={{
           background:
-            "linear-gradient(to bottom, transparent, rgba(245,158,11,0.025), transparent)",
+            "linear-gradient(to bottom, transparent, rgba(56,189,248,0.025), transparent)",
           animation: "scanDown 8s linear infinite",
           top: 0,
         }}
@@ -45,7 +45,27 @@ export default function Hero() {
             className="flex items-center gap-2.5"
             style={{ animation: "fadeUp 0.45s ease both 0.05s", opacity: 0 }}
           >
-            <div className="w-1.5 h-1.5 bg-amber-500" />
+            <svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden>
+              <line x1="14" y1="11" x2="14" y2="2" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="6" y2="7" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="4" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="8" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="14" y2="26" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="21" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="25" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="11" x2="21" y2="5" stroke="#38bdf8" strokeWidth="1.5" />
+              <line x1="14" y1="2" x2="6" y2="7" stroke="#38bdf8" strokeWidth="0.7" />
+              <line x1="21" y1="5" x2="25" y2="14" stroke="#38bdf8" strokeWidth="0.7" />
+              <circle cx="14" cy="11" r="2.2" fill="#38bdf8" />
+              <circle cx="14" cy="2" r="1.6" fill="#38bdf8" />
+              <circle cx="6" cy="7" r="1.6" fill="#38bdf8" />
+              <circle cx="4" cy="14" r="1.6" fill="#38bdf8" />
+              <circle cx="8" cy="21" r="1.6" fill="#38bdf8" />
+              <circle cx="14" cy="26" r="1.6" fill="#38bdf8" />
+              <circle cx="21" cy="21" r="1.6" fill="#38bdf8" />
+              <circle cx="25" cy="14" r="1.6" fill="#38bdf8" />
+              <circle cx="21" cy="5" r="1.6" fill="#38bdf8" />
+            </svg>
             <span className="text-xs font-mono text-zinc-500 uppercase tracking-[0.3em]">
               CRTX — Document Intelligence
             </span>
@@ -62,7 +82,7 @@ export default function Hero() {
           >
             Ask anything.
             <br />
-            <span className="text-amber-500">Get answers.</span>
+            <span className="text-sky-400">Get answers.</span>
             <br />
             <span className="text-zinc-500">From your docs.</span>
           </h1>
@@ -84,7 +104,7 @@ export default function Hero() {
           >
             <Link
               href="/login"
-              className="px-7 py-3.5 bg-amber-500 text-zinc-950 text-sm font-mono font-bold uppercase tracking-[0.15em] hover:bg-amber-400 active:bg-amber-600 transition-colors"
+              className="px-7 py-3.5 bg-sky-400 text-zinc-950 text-sm font-mono font-bold uppercase tracking-[0.15em] hover:bg-sky-300 active:bg-sky-500 transition-colors"
             >
               Get Started →
             </Link>
@@ -128,7 +148,7 @@ export default function Hero() {
 
 function TerminalDemo() {
   return (
-    <div className="bg-zinc-900 border border-zinc-700/80 shadow-[0_0_80px_rgba(245,158,11,0.06)] overflow-hidden">
+    <div className="bg-zinc-900 border border-zinc-700/80 shadow-[0_0_80px_rgba(56,189,248,0.06)] overflow-hidden">
       {/* Window chrome */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-zinc-950/80">
         <div className="flex gap-1.5">
@@ -183,10 +203,10 @@ function TerminalDemo() {
           className="flex flex-col gap-3"
           style={{ animation: "reveal 0.3s ease both 2.0s", opacity: 0 }}
         >
-          <span className="text-[10px] font-mono text-amber-500 uppercase tracking-[0.22em]">
+          <span className="text-[10px] font-mono text-sky-400 uppercase tracking-[0.22em]">
             CRTX
           </span>
-          <div className="border-l-2 border-amber-500/40 pl-3.5 flex flex-col gap-2">
+          <div className="border-l-2 border-sky-400/40 pl-3.5 flex flex-col gap-2">
             <p className="text-zinc-300 text-[13px] leading-relaxed">
               Based on the Q3 Strategic Review, the executive findings are:
             </p>
@@ -225,7 +245,7 @@ function TerminalDemo() {
         >
           <span className="text-zinc-700">›</span>
           <span
-            className="inline-block w-1.5 h-[15px] bg-amber-500"
+            className="inline-block w-1.5 h-[15px] bg-sky-400"
             style={{ animation: "blink 1s step-end infinite" }}
           />
         </div>

@@ -19,7 +19,7 @@ export default function OGImage() {
           fontFamily: "sans-serif",
         }}
       >
-        {/* Ambient amber glow — top right */}
+        {/* Ambient cyan glow — top right */}
         <div
           style={{
             position: "absolute",
@@ -29,11 +29,11 @@ export default function OGImage() {
             height: 700,
             borderRadius: "50%",
             background:
-              "radial-gradient(circle, rgba(245,158,11,0.13) 0%, transparent 68%)",
+              "radial-gradient(circle, rgba(56,189,248,0.13) 0%, transparent 68%)",
           }}
         />
 
-        {/* Ambient amber glow — bottom left */}
+        {/* Ambient cyan glow — bottom left */}
         <div
           style={{
             position: "absolute",
@@ -43,11 +43,11 @@ export default function OGImage() {
             height: 500,
             borderRadius: "50%",
             background:
-              "radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 68%)",
+              "radial-gradient(circle, rgba(56,189,248,0.06) 0%, transparent 68%)",
           }}
         />
 
-        {/* Left amber accent bar */}
+        {/* Left cyan accent bar */}
         <div
           style={{
             position: "absolute",
@@ -55,7 +55,7 @@ export default function OGImage() {
             top: 88,
             width: 4,
             height: 108,
-            background: "#f59e0b",
+            background: "#38bdf8",
           }}
         />
 
@@ -114,7 +114,7 @@ export default function OGImage() {
             }}
           >
             <div
-              style={{ width: 7, height: 7, background: "#f59e0b" }}
+              style={{ width: 7, height: 7, background: "#38bdf8" }}
             />
             <span
               style={{
@@ -143,12 +143,12 @@ export default function OGImage() {
             CRTX
           </div>
 
-          {/* Amber underline */}
+          {/* Cyan underline */}
           <div
             style={{
               width: 128,
               height: 3,
-              background: "#f59e0b",
+              background: "#38bdf8",
               marginBottom: 36,
             }}
           />

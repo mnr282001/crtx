@@ -25,7 +25,7 @@ export default function HowItWorks() {
       <div className="max-w-7xl mx-auto flex flex-col gap-14">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-px h-5 bg-amber-500 shrink-0" />
+          <div className="w-px h-5 bg-sky-400 shrink-0" />
           <span className="text-xs font-mono text-zinc-500 uppercase tracking-[0.3em]">
             How it works
           </span>
@@ -43,7 +43,7 @@ export default function HowItWorks() {
             >
               {/* Number box */}
               <div className="w-16 h-16 border border-zinc-700 bg-zinc-950 flex items-center justify-center shrink-0">
-                <span className="text-2xl font-mono font-bold text-amber-500">
+                <span className="text-2xl font-mono font-bold text-sky-400">
                   {s.step}
                 </span>
               </div>

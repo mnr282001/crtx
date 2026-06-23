@@ -129,7 +129,7 @@ export default function ShareChatModal({
               onFocus={() => setDropdownOpen(true)}
               placeholder={membersLoading ? "Loading members…" : "Search by email…"}
               disabled={membersLoading}
-              className="w-full bg-zinc-800 border border-zinc-700 text-zinc-100 text-xs font-mono px-3 py-2 outline-none focus:border-amber-500/70 placeholder:text-zinc-600 transition-colors disabled:opacity-40"
+              className="w-full bg-zinc-800 border border-zinc-700 text-zinc-100 text-xs font-mono px-3 py-2 outline-none focus:border-sky-400/70 placeholder:text-zinc-600 transition-colors disabled:opacity-40"
             />
 
             {showDropdown && (
@@ -157,7 +157,7 @@ export default function ShareChatModal({
                       <span
                         className={`text-[10px] font-mono px-1.5 py-0.5 shrink-0 ${
                           m.role === "owner"
-                            ? "bg-amber-500/20 text-amber-400"
+                            ? "bg-sky-400/20 text-sky-300"
                             : "bg-zinc-700 text-zinc-500"
                         }`}
                       >
@@ -172,15 +172,15 @@ export default function ShareChatModal({
 
           {/* Selected member confirmation */}
           {selected && (
-            <div className="flex items-center gap-2 bg-zinc-800 border border-amber-500/30 px-3 py-2">
-              <svg className="w-3 h-3 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <div className="flex items-center gap-2 bg-zinc-800 border border-sky-400/30 px-3 py-2">
+              <svg className="w-3 h-3 text-sky-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
-              <span className="text-xs font-mono text-amber-400 flex-1 truncate">{selected.email}</span>
+              <span className="text-xs font-mono text-sky-300 flex-1 truncate">{selected.email}</span>
               <span
                 className={`text-[10px] font-mono px-1.5 py-0.5 shrink-0 ${
                   selected.role === "owner"
-                    ? "bg-amber-500/20 text-amber-400"
+                    ? "bg-sky-400/20 text-sky-300"
                     : "bg-zinc-700 text-zinc-500"
                 }`}
               >
@@ -215,7 +215,7 @@ export default function ShareChatModal({
           <button
             onClick={handleShare}
             disabled={!selected || sharing || success}
-            className="px-4 py-1.5 bg-amber-500 text-zinc-950 text-xs font-mono font-bold uppercase tracking-[0.12em] hover:bg-amber-400 active:bg-amber-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-1.5 bg-sky-400 text-zinc-950 text-xs font-mono font-bold uppercase tracking-[0.12em] hover:bg-sky-300 active:bg-sky-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             {sharing ? "…" : success ? "Shared!" : "Share"}
           </button>

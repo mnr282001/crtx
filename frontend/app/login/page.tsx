@@ -47,7 +47,27 @@ function LoginForm() {
   return (
     <div className="w-full max-w-sm flex flex-col gap-6">
       <div className="flex items-center gap-2">
-        <div className="w-1.5 h-1.5 bg-amber-500" />
+        <svg width="18" height="18" viewBox="0 0 28 28" fill="none" aria-hidden>
+          <line x1="14" y1="11" x2="14" y2="2" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="6" y2="7" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="4" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="8" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="14" y2="26" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="21" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="25" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="21" y2="5" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="2" x2="6" y2="7" stroke="#38bdf8" strokeWidth="0.7" />
+          <line x1="21" y1="5" x2="25" y2="14" stroke="#38bdf8" strokeWidth="0.7" />
+          <circle cx="14" cy="11" r="2.2" fill="#38bdf8" />
+          <circle cx="14" cy="2" r="1.6" fill="#38bdf8" />
+          <circle cx="6" cy="7" r="1.6" fill="#38bdf8" />
+          <circle cx="4" cy="14" r="1.6" fill="#38bdf8" />
+          <circle cx="8" cy="21" r="1.6" fill="#38bdf8" />
+          <circle cx="14" cy="26" r="1.6" fill="#38bdf8" />
+          <circle cx="21" cy="21" r="1.6" fill="#38bdf8" />
+          <circle cx="25" cy="14" r="1.6" fill="#38bdf8" />
+          <circle cx="21" cy="5" r="1.6" fill="#38bdf8" />
+        </svg>
         <span className="text-sm font-mono font-semibold tracking-[0.25em] uppercase text-zinc-100">
           CRTX
         </span>
@@ -60,7 +80,7 @@ function LoginForm() {
             onClick={() => { setMode(m); setError(null); setInfo(null); }}
             className={`text-xs font-mono uppercase tracking-[0.15em] px-3 py-2 border-b-2 transition-colors ${
               mode === m
-                ? "border-amber-500 text-amber-400"
+                ? "border-sky-400 text-sky-300"
                 : "border-transparent text-zinc-600 hover:text-zinc-400"
             }`}
           >
@@ -76,7 +96,7 @@ function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="bg-zinc-900 border border-zinc-700 text-zinc-100 text-sm font-mono px-3 py-2.5 outline-none focus:border-amber-500/70 placeholder:text-zinc-600 transition-colors"
+          className="bg-zinc-900 border border-zinc-700 text-zinc-100 text-sm font-mono px-3 py-2.5 outline-none focus:border-sky-400/70 placeholder:text-zinc-600 transition-colors"
         />
         <input
           type="password"
@@ -85,7 +105,7 @@ function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={6}
-          className="bg-zinc-900 border border-zinc-700 text-zinc-100 text-sm font-mono px-3 py-2.5 outline-none focus:border-amber-500/70 placeholder:text-zinc-600 transition-colors"
+          className="bg-zinc-900 border border-zinc-700 text-zinc-100 text-sm font-mono px-3 py-2.5 outline-none focus:border-sky-400/70 placeholder:text-zinc-600 transition-colors"
         />
 
         {error && <p className="text-xs font-mono text-red-400">{error}</p>}
@@ -94,7 +114,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 py-2.5 bg-amber-500 text-zinc-950 text-xs font-mono font-bold uppercase tracking-[0.15em] hover:bg-amber-400 active:bg-amber-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="mt-1 py-2.5 bg-sky-400 text-zinc-950 text-xs font-mono font-bold uppercase tracking-[0.15em] hover:bg-sky-300 active:bg-sky-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? "…" : mode === "signin" ? "Sign in" : "Create account"}
         </button>

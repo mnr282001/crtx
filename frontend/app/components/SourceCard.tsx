@@ -17,7 +17,7 @@ export default function SourceCard({ source }: { source: Source }) {
     source.score >= 0.8
       ? "text-emerald-400 border-emerald-500/50 bg-emerald-500/5"
       : source.score >= 0.6
-      ? "text-amber-400 border-amber-500/50 bg-amber-500/5"
+      ? "text-sky-300 border-sky-400/50 bg-sky-400/5"
       : "text-red-400 border-red-500/50 bg-red-500/5";
 
   return (

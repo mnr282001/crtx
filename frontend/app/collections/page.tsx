@@ -78,7 +78,7 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
           <select
             value={permission}
             onChange={(e) => setPermission(e.target.value as "query" | "ingest")}
-            className="bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-mono px-2 py-1.5 outline-none focus:border-amber-500/70"
+            className="bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-mono px-2 py-1.5 outline-none focus:border-sky-400/70"
           >
             <option value="query">Query only</option>
             <option value="ingest">Query + Add docs</option>
@@ -86,7 +86,7 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
           <button
             onClick={create}
             disabled={creating}
-            className="px-3 py-1.5 bg-amber-500 text-zinc-950 text-xs font-mono font-bold uppercase tracking-[0.12em] hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-1.5 bg-sky-400 text-zinc-950 text-xs font-mono font-bold uppercase tracking-[0.12em] hover:bg-sky-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             {creating ? "…" : "Create link"}
           </button>
@@ -101,7 +101,7 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
           ) : (
             shares.map((s) => (
               <div key={s.id} className="flex items-center gap-2 bg-zinc-800 px-3 py-2">
-                <span className={`text-xs font-mono px-1.5 py-0.5 ${s.permission === "ingest" ? "bg-amber-500/20 text-amber-400" : "bg-zinc-700 text-zinc-400"}`}>
+                <span className={`text-xs font-mono px-1.5 py-0.5 ${s.permission === "ingest" ? "bg-sky-400/20 text-sky-300" : "bg-zinc-700 text-zinc-400"}`}>
                   {s.permission === "ingest" ? "ingest" : "query"}
                 </span>
                 <span className="text-xs font-mono text-zinc-500 flex-1 truncate">{s.share_token.slice(0, 12)}…</span>
@@ -129,7 +129,7 @@ function ShareModal({ collectionId, collectionName, onClose }: { collectionId: s
             {members.map((m) => (
               <div key={m.id} className="flex items-center gap-2">
                 <span className="text-xs font-mono text-zinc-500 flex-1 truncate">{m.email ?? m.user_id.slice(0, 8) + "…"}</span>
-                <span className={`text-xs font-mono px-1.5 py-0.5 ${m.permission === "ingest" ? "bg-amber-500/20 text-amber-400" : "bg-zinc-700 text-zinc-400"}`}>
+                <span className={`text-xs font-mono px-1.5 py-0.5 ${m.permission === "ingest" ? "bg-sky-400/20 text-sky-300" : "bg-zinc-700 text-zinc-400"}`}>
                   {m.permission}
                 </span>
                 <button
@@ -216,12 +216,12 @@ export default function CollectionsPage() {
               onKeyDown={(e) => e.key === "Enter" && create()}
               placeholder="New collection name…"
               maxLength={200}
-              className="flex-1 bg-zinc-900 border border-zinc-700 text-zinc-100 text-sm font-mono px-3 py-2 outline-none focus:border-amber-500/70 placeholder:text-zinc-600 transition-colors"
+              className="flex-1 bg-zinc-900 border border-zinc-700 text-zinc-100 text-sm font-mono px-3 py-2 outline-none focus:border-sky-400/70 placeholder:text-zinc-600 transition-colors"
             />
             <button
               onClick={create}
               disabled={creating || !name.trim()}
-              className="px-4 bg-amber-500 text-zinc-950 text-xs font-mono font-bold uppercase tracking-[0.15em] hover:bg-amber-400 active:bg-amber-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="px-4 bg-sky-400 text-zinc-950 text-xs font-mono font-bold uppercase tracking-[0.15em] hover:bg-sky-300 active:bg-sky-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               {creating ? "…" : "Create"}
             </button>
@@ -239,13 +239,13 @@ export default function CollectionsPage() {
                   key={col.id}
                   className={`flex items-center gap-3 px-3 py-2.5 border font-mono text-sm transition-colors ${
                     activeId === col.id
-                      ? "border-amber-500/40 bg-amber-500/5"
+                      ? "border-sky-400/40 bg-sky-400/5"
                       : "border-zinc-800 bg-zinc-900"
                   }`}
                 >
                   <button
                     className={`flex-1 text-left truncate ${
-                      activeId === col.id ? "text-amber-400" : "text-zinc-300"
+                      activeId === col.id ? "text-sky-300" : "text-zinc-300"
                     }`}
                     onClick={() => setActiveId(col.id)}
                   >
@@ -260,7 +260,7 @@ export default function CollectionsPage() {
                   {isOwner(col as { user_id?: string }) && (
                     <button
                       onClick={() => setSharingCollection({ id: col.id, name: col.name })}
-                      className="text-zinc-600 hover:text-amber-400 transition-colors text-xs shrink-0 font-mono"
+                      className="text-zinc-600 hover:text-sky-300 transition-colors text-xs shrink-0 font-mono"
                       title="Share"
                     >
                       Share

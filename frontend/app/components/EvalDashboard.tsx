@@ -8,14 +8,14 @@ import { getEvalStats, type EvalStats, type EvalTrendPoint } from "../api";
 function scoreColor(v: number | null): string {
   if (v === null) return "text-zinc-500";
   if (v >= 0.8) return "text-emerald-400";
-  if (v >= 0.5) return "text-amber-400";
+  if (v >= 0.5) return "text-sky-300";
   return "text-red-400";
 }
 
 function scoreBg(v: number | null): string {
   if (v === null) return "bg-zinc-700";
   if (v >= 0.8) return "bg-emerald-500";
-  if (v >= 0.5) return "bg-amber-500";
+  if (v >= 0.5) return "bg-sky-400";
   return "bg-red-500";
 }
 
@@ -73,7 +73,7 @@ function TrendChart({ data }: { data: EvalTrendPoint[] }) {
         <polyline
           points={polyline(faithPoints)}
           fill="none"
-          stroke="#f59e0b"
+          stroke="#38bdf8"
           strokeWidth="1.5"
           strokeLinejoin="round"
         />
@@ -88,7 +88,7 @@ function TrendChart({ data }: { data: EvalTrendPoint[] }) {
         />
         {/* Dots for faithfulness */}
         {xs.map((x, i) => (
-          <circle key={i} cx={x} cy={toY(faithPoints[i])} r="2" fill="#f59e0b" />
+          <circle key={i} cx={x} cy={toY(faithPoints[i])} r="2" fill="#38bdf8" />
         ))}
       </svg>
       <div className="flex justify-between text-[10px] text-zinc-600 font-mono mt-0.5">
@@ -237,7 +237,7 @@ export default function EvalDashboard({ collectionId }: { collectionId: string }
           <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.12em]">Score Trends</span>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500">
-              <span className="inline-block w-4 h-0.5 bg-amber-500 rounded" />
+              <span className="inline-block w-4 h-0.5 bg-sky-400 rounded" />
               Faithfulness
             </span>
             <span className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500">
@@ -254,7 +254,7 @@ export default function EvalDashboard({ collectionId }: { collectionId: string }
         <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.12em]">Latency Breakdown</span>
         <div className="flex flex-col gap-2.5">
           <LatencyBar label="Retrieval" ms={stats.avg_retrieval_latency_ms} maxMs={maxLatency} color="bg-indigo-500" />
-          <LatencyBar label="Generation" ms={stats.avg_generation_latency_ms} maxMs={maxLatency} color="bg-amber-500" />
+          <LatencyBar label="Generation" ms={stats.avg_generation_latency_ms} maxMs={maxLatency} color="bg-sky-400" />
           <LatencyBar label="Total" ms={stats.avg_total_latency_ms} maxMs={maxLatency} color="bg-zinc-500" />
         </div>
       </div>

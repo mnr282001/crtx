@@ -339,7 +339,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
           <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.2em]">Chats</span>
           <button
             onClick={newChat}
-            className="text-[10px] font-mono text-amber-500 hover:text-amber-400 uppercase tracking-[0.15em] transition-colors"
+            className="text-[10px] font-mono text-sky-400 hover:text-sky-300 uppercase tracking-[0.15em] transition-colors"
           >
             + New
           </button>
@@ -358,7 +358,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                 className={[
                   "group relative flex items-center gap-1 px-3 py-2.5 cursor-pointer border-b border-zinc-900 transition-colors",
                   s.id === activeSessionId
-                    ? "bg-zinc-800 border-l-2 border-l-amber-500"
+                    ? "bg-zinc-800 border-l-2 border-l-sky-400"
                     : "hover:bg-zinc-900",
                 ].join(" ")}
               >
@@ -374,7 +374,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                     }}
                     onClick={(e) => e.stopPropagation()}
                     maxLength={100}
-                    className="flex-1 min-w-0 text-xs font-mono bg-transparent border-b border-amber-500/60 text-zinc-100 outline-none"
+                    className="flex-1 min-w-0 text-xs font-mono bg-transparent border-b border-sky-400/60 text-zinc-100 outline-none"
                   />
                 ) : (
                   <p className={[
@@ -446,14 +446,14 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
           {activeSession && messages.length > 0 && (
             <button
               onClick={() => setShareSession(activeSession)}
-              className="text-[10px] font-mono text-zinc-500 hover:text-amber-400 uppercase tracking-[0.15em] shrink-0 transition-colors"
+              className="text-[10px] font-mono text-zinc-500 hover:text-sky-300 uppercase tracking-[0.15em] shrink-0 transition-colors"
             >
               ↗ Share
             </button>
           )}
           <button
             onClick={newChat}
-            className="text-[10px] font-mono text-amber-500 hover:text-amber-400 uppercase tracking-[0.15em] shrink-0"
+            className="text-[10px] font-mono text-sky-400 hover:text-sky-300 uppercase tracking-[0.15em] shrink-0"
           >
             + New
           </button>
@@ -467,7 +467,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
               {messages.length > 0 && (
                 <button
                   onClick={() => setShareSession(activeSession)}
-                  className="text-[10px] font-mono text-zinc-500 hover:text-amber-400 uppercase tracking-[0.15em] transition-colors"
+                  className="text-[10px] font-mono text-zinc-500 hover:text-sky-300 uppercase tracking-[0.15em] transition-colors"
                 >
                   ↗ Share
                 </button>
@@ -560,7 +560,7 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
                 w-full bg-zinc-900 border border-zinc-700 text-zinc-100
                 text-sm font-mono placeholder:text-zinc-600
                 px-3 py-2.5 resize-none outline-none
-                focus:border-amber-500/70 transition-colors duration-100
+                focus:border-sky-400/70 transition-colors duration-100
                 disabled:opacity-40
               "
               style={{ minHeight: "42px" }}
@@ -570,9 +570,9 @@ export default function ChatInterface({ collectionId = "", pipeline = "" }: { co
             onClick={send}
             disabled={loading || !input.trim() || !activeSessionId}
             className="
-              h-[42px] px-4 sm:px-5 bg-amber-500 text-zinc-950
+              h-[42px] px-4 sm:px-5 bg-sky-400 text-zinc-950
               text-xs font-mono font-bold uppercase tracking-[0.15em]
-              hover:bg-amber-400 active:bg-amber-600
+              hover:bg-sky-300 active:bg-sky-500
               disabled:opacity-30 disabled:cursor-not-allowed
               transition-colors duration-100 shrink-0
             "
@@ -599,13 +599,13 @@ function UserBubble({ content }: { content: string }) {
 function AssistantBubble({ msg }: { msg: Message }) {
   return (
     <div className="flex flex-col gap-3 max-w-full sm:max-w-[88%]">
-      <div className="border-l-2 border-amber-500/60 pl-3 sm:pl-4">
+      <div className="border-l-2 border-sky-400/60 pl-3 sm:pl-4">
         {msg.isStreaming && !msg.content ? (
           <div className="flex gap-1.5 items-center h-7">
             {[0, 1, 2].map((i) => (
               <span
                 key={i}
-                className="w-1.5 h-1.5 bg-amber-500/60 animate-bounce"
+                className="w-1.5 h-1.5 bg-sky-400/60 animate-bounce"
                 style={{ animationDelay: `${i * 140}ms` }}
               />
             ))}
@@ -624,7 +624,7 @@ function AssistantBubble({ msg }: { msg: Message }) {
               h1: ({ children }) => <h1 className="text-base font-bold text-zinc-100 mb-2 mt-3">{children}</h1>,
               h2: ({ children }) => <h2 className="text-sm font-bold text-zinc-100 mb-1 mt-3">{children}</h2>,
               h3: ({ children }) => <h3 className="text-sm font-semibold text-zinc-200 mb-1 mt-2">{children}</h3>,
-              code: ({ children }) => <code className="bg-zinc-800 text-amber-400 px-1 py-0.5 text-xs font-mono rounded">{children}</code>,
+              code: ({ children }) => <code className="bg-zinc-800 text-sky-300 px-1 py-0.5 text-xs font-mono rounded">{children}</code>,
               pre: ({ children }) => <pre className="bg-zinc-900 border border-zinc-700 p-3 mb-2 overflow-x-auto text-xs font-mono text-zinc-300">{children}</pre>,
               blockquote: ({ children }) => <blockquote className="border-l-2 border-zinc-600 pl-3 text-zinc-400 italic mb-2">{children}</blockquote>,
             }}

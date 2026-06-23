@@ -14,7 +14,27 @@ export default function NavBar() {
   return (
     <header className="shrink-0 border-b border-zinc-800 px-4 sm:px-5 h-11 flex items-center gap-3 sm:gap-4 bg-zinc-950">
       <Link href="/" className="flex items-center gap-2">
-        <div className="w-1.5 h-1.5 bg-amber-500" />
+        <svg width="18" height="18" viewBox="0 0 28 28" fill="none" aria-hidden>
+          <line x1="14" y1="11" x2="14" y2="2" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="6" y2="7" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="4" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="8" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="14" y2="26" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="21" y2="21" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="25" y2="14" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="11" x2="21" y2="5" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="14" y1="2" x2="6" y2="7" stroke="#38bdf8" strokeWidth="0.7" />
+          <line x1="21" y1="5" x2="25" y2="14" stroke="#38bdf8" strokeWidth="0.7" />
+          <circle cx="14" cy="11" r="2.2" fill="#38bdf8" />
+          <circle cx="14" cy="2" r="1.6" fill="#38bdf8" />
+          <circle cx="6" cy="7" r="1.6" fill="#38bdf8" />
+          <circle cx="4" cy="14" r="1.6" fill="#38bdf8" />
+          <circle cx="8" cy="21" r="1.6" fill="#38bdf8" />
+          <circle cx="14" cy="26" r="1.6" fill="#38bdf8" />
+          <circle cx="21" cy="21" r="1.6" fill="#38bdf8" />
+          <circle cx="25" cy="14" r="1.6" fill="#38bdf8" />
+          <circle cx="21" cy="5" r="1.6" fill="#38bdf8" />
+        </svg>
         <span className="text-sm font-mono font-semibold tracking-[0.25em] uppercase text-zinc-100">
           CRTX
         </span>
@@ -27,7 +47,7 @@ export default function NavBar() {
           <select
             value={activeId}
             onChange={(e) => setActiveId(e.target.value)}
-            className="bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs font-mono px-2 py-1 outline-none focus:border-amber-500/70 max-w-[160px] cursor-pointer"
+            className="bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs font-mono px-2 py-1 outline-none focus:border-sky-400/70 max-w-[160px] cursor-pointer"
           >
             <option value="">— no collection —</option>
             {collections.map((c) => (
@@ -51,11 +71,11 @@ export default function NavBar() {
           className={[
             "hidden md:flex items-center gap-1.5 text-xs font-mono uppercase tracking-[0.1em] transition-colors",
             tab === "eval"
-              ? "text-amber-500"
+              ? "text-sky-400"
               : "text-zinc-500 hover:text-zinc-300",
           ].join(" ")}
         >
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" />
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-sky-400" />
           Evals
         </button>
       )}

@@ -1,6 +1,12 @@
 <div align="center">
 
-# CRTX
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="frontend/public/crtx-logo-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="frontend/public/crtx-logo-light.png">
+  <img alt="CRTX" src="frontend/public/crtx-logo-dark.png" width="280" />
+</picture>
+
+<br />
 
 **A production-grade RAG platform — ingest any document, query it with AI, and measure answer quality.**
 
@@ -345,7 +351,7 @@ crtx/
 
 - [ ] Loom walkthrough video
 - [ ] Docker Compose for one-command local setup
-- [ ] Streaming responses (SSE)
+- [x] Streaming responses (SSE)
 - [ ] Re-ranking layer (Cohere / cross-encoder)
 - [ ] Multi-modal support (images in PDFs)
 - [ ] SAML / SSO for enterprise teams

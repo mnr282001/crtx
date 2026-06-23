@@ -172,7 +172,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
         className={[
           "relative cursor-pointer border border-dashed p-6 sm:p-8 flex flex-col items-center justify-center gap-3 select-none transition-all duration-150",
           dragging
-            ? "border-amber-500 bg-amber-500/5 shadow-[inset_0_0_40px_rgba(245,158,11,0.06)]"
+            ? "border-sky-400 bg-sky-400/5 shadow-[inset_0_0_40px_rgba(56,189,248,0.06)]"
             : "border-zinc-700 bg-zinc-900/40 hover:border-zinc-500",
         ].join(" ")}
       >
@@ -185,7 +185,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
           className="sr-only"
         />
 
-        <div className={`transition-colors ${dragging ? "text-amber-500" : "text-zinc-600"}`}>
+        <div className={`transition-colors ${dragging ? "text-sky-400" : "text-zinc-600"}`}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <polyline points="14 2 14 8 20 8" />
@@ -240,29 +240,29 @@ function FileRow({ entry }: { entry: FileEntry }) {
   const isError = entry.status === "error";
 
   const statusLabel = () => {
-    if (entry.status === "uploading") return <span className="text-amber-500 shrink-0 tabular-nums">{Math.round(entry.progress)}%</span>;
+    if (entry.status === "uploading") return <span className="text-sky-400 shrink-0 tabular-nums">{Math.round(entry.progress)}%</span>;
     if (entry.status === "queued") return <span className="text-zinc-500 shrink-0">queued</span>;
     if (entry.status === "processing") {
       const pct = Math.round(entry.progress);
       const total = entry.chunksTotal;
       return (
-        <span className="text-amber-500 shrink-0 tabular-nums">
+        <span className="text-sky-400 shrink-0 tabular-nums">
           {total ? `${pct}%` : `${pct}%`}
         </span>
       );
     }
     if (isDone) return <span className="text-emerald-400 shrink-0">✓ {entry.chunks} chunks</span>;
-    if (isPartial) return <span className="text-amber-400 shrink-0">~ {entry.chunks} chunks</span>;
+    if (isPartial) return <span className="text-sky-300 shrink-0">~ {entry.chunks} chunks</span>;
     if (isError) return <span className="text-red-400 shrink-0">✗ failed</span>;
   };
 
   const barColor = isDone
     ? "bg-emerald-500"
     : isPartial
-    ? "bg-amber-500"
+    ? "bg-sky-400"
     : isError
     ? "bg-red-500"
-    : "bg-amber-500";
+    : "bg-sky-400";
 
   return (
     <div className="border border-zinc-800 bg-zinc-900 p-2.5 font-mono text-xs">
@@ -281,7 +281,7 @@ function FileRow({ entry }: { entry: FileEntry }) {
       </div>
 
       {(isError || isPartial) && entry.error && (
-        <p className={`mt-1.5 text-xs leading-tight truncate ${isPartial ? "text-amber-400" : "text-red-400"}`}>
+        <p className={`mt-1.5 text-xs leading-tight truncate ${isPartial ? "text-sky-300" : "text-red-400"}`}>
           {entry.error}
         </p>
       )}

@@ -35,7 +35,7 @@ export default function Home() {
           className={[
             "flex-1 py-2.5 text-xs font-mono uppercase tracking-[0.15em] transition-colors duration-100",
             tab === "chat"
-              ? "text-amber-500 border-b-2 border-amber-500 -mb-px"
+              ? "text-sky-400 border-b-2 border-sky-400 -mb-px"
               : "text-zinc-500 hover:text-zinc-300",
           ].join(" ")}
         >
@@ -46,7 +46,7 @@ export default function Home() {
           className={[
             "flex-1 py-2.5 text-xs font-mono uppercase tracking-[0.15em] transition-colors duration-100",
             tab === "docs"
-              ? "text-amber-500 border-b-2 border-amber-500 -mb-px"
+              ? "text-sky-400 border-b-2 border-sky-400 -mb-px"
               : "text-zinc-500 hover:text-zinc-300",
           ].join(" ")}
         >
@@ -58,7 +58,7 @@ export default function Home() {
             className={[
               "flex-1 py-2.5 text-xs font-mono uppercase tracking-[0.15em] transition-colors duration-100",
               tab === "eval"
-                ? "text-amber-500 border-b-2 border-amber-500 -mb-px"
+                ? "text-sky-400 border-b-2 border-sky-400 -mb-px"
                 : "text-zinc-500 hover:text-zinc-300",
             ].join(" ")}
           >

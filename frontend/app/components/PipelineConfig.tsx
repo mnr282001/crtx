@@ -38,7 +38,7 @@ export default function PipelineConfig({ config, saving = false, onChange }: Pro
         <span>Pipeline Config</span>
         <span className="flex items-center gap-2">
           {saving && (
-            <span className="text-amber-500/70 normal-case tracking-normal">saving…</span>
+            <span className="text-sky-400/70 normal-case tracking-normal">saving…</span>
           )}
           <span
             className={`inline-block transition-transform duration-150 ${open ? "rotate-180" : ""}`}
@@ -56,7 +56,7 @@ export default function PipelineConfig({ config, saving = false, onChange }: Pro
               <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-[0.15em]">
                 Chunk Size
               </p>
-              <span className="text-xs font-mono text-amber-500">{config.chunk_size}</span>
+              <span className="text-xs font-mono text-sky-400">{config.chunk_size}</span>
             </div>
             <input
               type="range"
@@ -67,7 +67,7 @@ export default function PipelineConfig({ config, saving = false, onChange }: Pro
               onChange={(e) =>
                 onChange({ ...config, chunk_size: Number(e.target.value) })
               }
-              className="w-full h-1 appearance-none bg-zinc-700 accent-amber-500 cursor-pointer"
+              className="w-full h-1 appearance-none bg-zinc-700 accent-sky-400 cursor-pointer"
             />
             <div className="flex justify-between text-[10px] font-mono text-zinc-700 mt-1">
               <span>200</span>
@@ -88,7 +88,7 @@ export default function PipelineConfig({ config, saving = false, onChange }: Pro
                   className={[
                     "flex items-center justify-between px-3 py-2 text-xs border transition-colors duration-100",
                     config.retrieval_strategy === value
-                      ? "border-amber-500/50 text-amber-400 bg-amber-500/5"
+                      ? "border-sky-400/50 text-sky-300 bg-sky-400/5"
                       : "border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300",
                   ].join(" ")}
                 >
