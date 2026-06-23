@@ -54,20 +54,21 @@ def log_query(record: dict) -> None:
     logger.info(record)
     try:
         _get_db().table("query_logs").insert({
-            "request_id":            record["request_id"],
-            "collection_id":         record["collection_id"] or None,
-            "user_id":               record["user_id"],
-            "retrieval_strategy":    record["retrieval_strategy"],
-            "top_k":                 record["top_k"],
-            "embedding_latency_ms":  record["embedding_latency_ms"],
-            "retrieval_latency_ms":  record["retrieval_latency_ms"],
-            "generation_latency_ms": record["generation_latency_ms"],
-            "total_latency_ms":      record["total_latency_ms"],
-            "num_chunks_retrieved":  record["num_chunks_retrieved"],
-            "retrieval_scores":      record["retrieval_scores"],
-            "prompt_tokens":         record["prompt_tokens"],
-            "completion_tokens":     record["completion_tokens"],
-            "model":                 record["model"],
+            "request_id":               record["request_id"],
+            "collection_id":            record["collection_id"] or None,
+            "user_id":                  record["user_id"],
+            "retrieval_strategy":       record["retrieval_strategy"],
+            "top_k":                    record["top_k"],
+            "embedding_latency_ms":     record["embedding_latency_ms"],
+            "retrieval_latency_ms":     record["retrieval_latency_ms"],
+            "generation_latency_ms":    record["generation_latency_ms"],
+            "time_to_first_token_ms":   record.get("time_to_first_token_ms"),
+            "total_latency_ms":         record["total_latency_ms"],
+            "num_chunks_retrieved":     record["num_chunks_retrieved"],
+            "retrieval_scores":         record["retrieval_scores"],
+            "prompt_tokens":            record["prompt_tokens"],
+            "completion_tokens":        record["completion_tokens"],
+            "model":                    record["model"],
         }).execute()
     except Exception:
         pass
