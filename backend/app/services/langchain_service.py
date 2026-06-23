@@ -1,5 +1,7 @@
+import asyncio
+import json
 import time
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 from langchain_community.callbacks import get_openai_callback
 from langchain_core.output_parsers import StrOutputParser
@@ -12,7 +14,7 @@ from pinecone.exceptions import PineconeApiException
 
 from app.config import EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, TOP_K
 from app.db.vector_store import get_index
-from app.observability import log_query, timed
+from app.observability import log_query, logger, timed
 from app.services.rag_service import raise_openai_http_error, raise_pinecone_http_error
 
 
@@ -165,3 +167,121 @@ def ask_question_langchain(question: str, namespace: str = "", config: Optional[
         "_retrieval_ms": embedding_ms + pinecone_ms,
         "_generation_ms": gen_t["ms"],
     }
+
+
+async def stream_answer_langchain(
+    question: str,
+    namespace: str = "",
+    config: Optional[dict] = None,
+    on_done: Optional[object] = None,
+) -> AsyncGenerator[str, None]:
+    """
+    Async generator that yields SSE-formatted strings:
+      event: metadata  — sources + retrieval timing (sent before first token)
+      event: token     — one chunk per LLM output token
+      event: done      — generation timing after last token
+      event: error     — if OpenAI fails mid-stream
+
+    Retrieval (embed + Pinecone) runs in a thread and is not streamed.
+    on_done(result_dict) is called after the last yield with the full answer + timing.
+    """
+    config = config or {}
+    retrieval_strategy = config.get("retrieval_strategy", "similarity")
+    top_k = config.get("top_k", TOP_K)
+    request_id = config.get("request_id", "")
+    user_id = config.get("user_id", "")
+    collection_id = config.get("collection_id", "")
+
+    t_total = time.monotonic()
+
+    # Blocking retrieval runs in a thread to keep the event loop free.
+    matches, embedding_ms, pinecone_ms = await asyncio.to_thread(
+        _retrieve, question, namespace, retrieval_strategy, top_k
+    )
+
+    context = "\n\n".join(m["metadata"]["text"] for m in matches)
+    sources = [
+        {
+            "source": m["metadata"].get("source"),
+            "chunk_index": m["metadata"].get("chunk_index"),
+            "text": m["metadata"]["text"],
+            "score": m["score"],
+        }
+        for m in matches
+    ]
+
+    # First event: send sources before any token arrives so the UI can render them immediately.
+    yield (
+        "event: metadata\n"
+        f"data: {json.dumps({'sources': sources, 'embedding_latency_ms': embedding_ms, 'retrieval_latency_ms': pinecone_ms})}\n\n"
+    )
+
+    llm = ChatOpenAI(model=_MODEL, streaming=True)
+    chain = _RAG_PROMPT | llm | StrOutputParser()
+
+    t_gen_start = time.monotonic()
+    t_first_token: Optional[float] = None
+    answer_parts: list = []
+    prompt_tokens = 0
+    completion_tokens = 0
+
+    try:
+        with get_openai_callback() as cb:
+            async for chunk in chain.astream({"context": context, "question": question}):
+                if t_first_token is None:
+                    t_first_token = time.monotonic()
+                answer_parts.append(chunk)
+                yield f"event: token\ndata: {json.dumps({'token': chunk})}\n\n"
+        prompt_tokens = cb.prompt_tokens
+        completion_tokens = cb.completion_tokens
+    except asyncio.CancelledError:
+        logger.warning({
+            "event": "rag.stream.client_disconnect",
+            "request_id": request_id,
+            "partial_chars": sum(len(p) for p in answer_parts),
+        })
+        raise
+    except OpenAIError as e:
+        logger.error({"event": "rag.stream.error", "request_id": request_id, "error": str(e)})
+        yield f"event: error\ndata: {json.dumps({'message': 'Generation failed'})}\n\n"
+        return
+
+    full_answer = "".join(answer_parts)
+    generation_ms = int((time.monotonic() - t_gen_start) * 1000)
+    time_to_first_token_ms = int((t_first_token - t_gen_start) * 1000) if t_first_token else 0
+    total_ms = int((time.monotonic() - t_total) * 1000)
+
+    yield (
+        "event: done\n"
+        f"data: {json.dumps({'generation_latency_ms': generation_ms, 'time_to_first_token_ms': time_to_first_token_ms})}\n\n"
+    )
+
+    # Everything below runs after the last SSE event is consumed by StreamingResponse
+    # but before the connection is fully closed — client already has all tokens.
+    log_query({
+        "event": "rag.query.complete",
+        "request_id": request_id,
+        "collection_id": collection_id,
+        "user_id": user_id,
+        "retrieval_strategy": retrieval_strategy,
+        "top_k": top_k,
+        "embedding_latency_ms": embedding_ms,
+        "retrieval_latency_ms": pinecone_ms,
+        "generation_latency_ms": generation_ms,
+        "time_to_first_token_ms": time_to_first_token_ms,
+        "total_latency_ms": total_ms,
+        "num_chunks_retrieved": len(matches),
+        "retrieval_scores": [round(m["score"], 4) for m in matches],
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "model": _MODEL,
+    })
+
+    if on_done is not None:
+        on_done({
+            "answer": full_answer,
+            "sources": sources,
+            "_embedding_ms": embedding_ms,
+            "_retrieval_ms": embedding_ms + pinecone_ms,
+            "_generation_ms": generation_ms,
+        })
