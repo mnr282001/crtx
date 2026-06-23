@@ -74,9 +74,32 @@ async def _enqueue(
     return job_id
 
 
+def _is_private_host(hostname: str) -> bool:
+    try:
+        addr = ipaddress.ip_address(hostname)
+        return addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved
+    except ValueError:
+        # hostname is a name, not an IP — allow it (DNS resolution happens in the worker)
+        lowered = hostname.lower()
+        return lowered in ("localhost",) or lowered.endswith(".local")
+
+
 class UrlIngestRequest(BaseModel):
     url: str
     collection_id: str = ""
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        parsed = _urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL must use http or https")
+        if not parsed.netloc:
+            raise ValueError("URL must include a host")
+        hostname = parsed.hostname or ""
+        if _is_private_host(hostname):
+            raise ValueError("URL must point to a public host")
+        return v
 
 
 @router.post("/")
