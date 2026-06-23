@@ -112,7 +112,14 @@ async def ingest(
     if not _can_ingest(collection_id, user["sub"]):
         raise HTTPException(status_code=403, detail="Ingest permission required")
 
+    if file.content_type not in ("application/pdf",):
+        raise HTTPException(status_code=415, detail="Only PDF files are accepted")
+
+    MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MB
     pdf_bytes = await file.read()
+    if len(pdf_bytes) > MAX_PDF_BYTES:
+        raise HTTPException(status_code=413, detail="File exceeds 50 MB limit")
+
     file_name = os.path.basename(file.filename or "document.pdf")
 
     # Always upload to storage so the worker can download it
@@ -162,7 +169,6 @@ async def ingest_from_url(
     if not _can_ingest(body.collection_id, user["sub"]):
         raise HTTPException(status_code=403, detail="Ingest permission required")
 
-    from urllib.parse import urlparse as _urlparse
     parsed_url = _urlparse(body.url)
     source = parsed_url.netloc + parsed_url.path
 
