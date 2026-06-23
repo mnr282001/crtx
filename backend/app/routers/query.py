@@ -31,6 +31,23 @@ def _get_collection_config(collection_id: str) -> dict:
     return {**_DEFAULT_CONFIG, **res.data[0].get("config", {})}
 
 
+_HISTORY_LIMIT = 20  # last 10 exchanges (user + assistant per exchange)
+
+
+def _get_session_history(session_id: str) -> list:
+    if not session_id:
+        return []
+    res = (
+        _db.table("chat_messages")
+        .select("role, content")
+        .eq("session_id", session_id)
+        .order("created_at")
+        .limit(_HISTORY_LIMIT)
+        .execute()
+    )
+    return res.data or []
+
+
 def _can_query(collection_id: str, user_id: str) -> bool:
     if not collection_id:
         return True
@@ -133,6 +150,8 @@ async def query(request: QueryRequest, background_tasks: BackgroundTasks, user: 
     config["user_id"] = user["sub"]
     config["collection_id"] = request.collection_id
 
+    history = _get_session_history(request.session_id)
+
     # Populated by on_done after the last token is sent; read by the background task
     # after StreamingResponse exhausts the generator.
     stream_result: dict = {}
@@ -143,6 +162,7 @@ async def query(request: QueryRequest, background_tasks: BackgroundTasks, user: 
             namespace=request.collection_id,
             config=config,
             on_done=stream_result.update,
+            history=history,
         ):
             yield chunk
 
