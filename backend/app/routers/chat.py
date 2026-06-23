@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+import uuid as _uuid
 from supabase import create_client
 
 from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY
@@ -13,9 +14,18 @@ _db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 class ShareSessionRequest(BaseModel):
     target_user_id: str
 
+    @field_validator("target_user_id")
+    @classmethod
+    def must_be_uuid(cls, v: str) -> str:
+        try:
+            _uuid.UUID(v)
+        except ValueError:
+            raise ValueError("target_user_id must be a valid UUID")
+        return v
+
 
 class UpdateSessionRequest(BaseModel):
-    title: str
+    title: str = Field(min_length=1, max_length=100)
 
 
 def _can_query(collection_id: str, user_id: str) -> bool:

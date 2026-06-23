@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from supabase import create_client
 from openai import OpenAI
 
@@ -40,7 +40,7 @@ def _can_query(collection_id: str, user_id: str) -> bool:
 
 
 class QueryRequest(BaseModel):
-    question: str
+    question: str = Field(min_length=1, max_length=5000)
     collection_id: str = ""
     session_id: str = ""
 

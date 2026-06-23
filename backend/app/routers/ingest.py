@@ -1,8 +1,10 @@
+import ipaddress
 import os
 import uuid
 from typing import Optional
+from urllib.parse import urlparse as _urlparse
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from supabase import create_client
 
 from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY

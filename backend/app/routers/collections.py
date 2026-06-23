@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal, Optional
 from supabase import create_client
 
@@ -17,7 +17,7 @@ _DEFAULT_CONFIG = {
 
 
 class CreateCollectionRequest(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=200)
 
 
 class PipelineConfig(BaseModel):
