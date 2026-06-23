@@ -40,6 +40,30 @@ _RAG_PROMPT = ChatPromptTemplate.from_messages([
 _MODEL = "gpt-4o"
 
 
+def _format_context(matches: list) -> str:
+    """Build context string, labelling image description chunks so the LLM knows their origin."""
+    parts = []
+    for m in matches:
+        chunk_type = m["metadata"].get("chunk_type", "text")
+        text = m["metadata"]["text"]
+        parts.append(f"[Figure/Image]: {text}" if chunk_type == "image_description" else text)
+    return "\n\n".join(parts)
+
+
+def _build_sources(matches: list) -> list[dict]:
+    return [
+        {
+            "source": m["metadata"].get("source"),
+            "chunk_index": m["metadata"].get("chunk_index"),
+            "text": m["metadata"]["text"],
+            "score": m["score"],
+            "chunk_type": m["metadata"].get("chunk_type", "text"),
+            "image_url": m["metadata"].get("image_url") or None,
+        }
+        for m in matches
+    ]
+
+
 def _build_history(history: list) -> list:
     msgs = []
     for msg in history:
@@ -146,7 +170,7 @@ def ask_question_langchain(question: str, namespace: str = "", config: Optional[
 
     matches, embedding_ms, pinecone_ms = _retrieve(question, namespace, retrieval_strategy, top_k)
 
-    context = "\n\n".join(m["metadata"]["text"] for m in matches)
+    context = _format_context(matches)
     history_messages = _build_history(history or [])
 
     llm = ChatOpenAI(model=_MODEL)
@@ -181,15 +205,7 @@ def ask_question_langchain(question: str, namespace: str = "", config: Optional[
 
     return {
         "answer": answer,
-        "sources": [
-            {
-                "source": m["metadata"].get("source"),
-                "chunk_index": m["metadata"].get("chunk_index"),
-                "text": m["metadata"]["text"],
-                "score": m["score"],
-            }
-            for m in matches
-        ],
+        "sources": _build_sources(matches),
         "_embedding_ms": embedding_ms,
         "_retrieval_ms": embedding_ms + pinecone_ms,
         "_generation_ms": gen_t["ms"],
@@ -227,17 +243,9 @@ async def stream_answer_langchain(
         _retrieve, question, namespace, retrieval_strategy, top_k
     )
 
-    context = "\n\n".join(m["metadata"]["text"] for m in matches)
+    context = _format_context(matches)
     history_messages = _build_history(history or [])
-    sources = [
-        {
-            "source": m["metadata"].get("source"),
-            "chunk_index": m["metadata"].get("chunk_index"),
-            "text": m["metadata"]["text"],
-            "score": m["score"],
-        }
-        for m in matches
-    ]
+    sources = _build_sources(matches)
 
     # First event: send sources before any token arrives so the UI can render them immediately.
     yield (
