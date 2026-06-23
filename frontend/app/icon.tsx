@@ -10,36 +10,24 @@ export default function Icon() {
         style={{
           width: 32,
           height: 32,
-          background: "linear-gradient(135deg, #0d0d14 0%, #1a1033 100%)",
-          borderRadius: 7,
+          background: "#7c3aed",
+          borderRadius: 8,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          position: "relative",
         }}
       >
-        {/* subtle glow */}
-        <div
-          style={{
-            position: "absolute",
-            width: 18,
-            height: 18,
-            borderRadius: "50%",
-            background: "rgba(139, 92, 246, 0.25)",
-            filter: "blur(6px)",
-          }}
-        />
         <span
           style={{
-            color: "#c4b5fd",
-            fontSize: 13,
-            fontWeight: 800,
-            letterSpacing: "-0.5px",
+            color: "white",
+            fontSize: 20,
+            fontWeight: 900,
             fontFamily: "sans-serif",
             lineHeight: 1,
+            marginTop: 1,
           }}
         >
-          CX
+          C
         </span>
       </div>
     ),
