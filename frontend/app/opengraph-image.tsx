@@ -164,7 +164,7 @@ export default function OGImage() {
               marginBottom: 48,
             }}
           >
-            Ask anything. Get cited answers from your documents — instantly.
+            Ask anything. Get cited answers from your documents instantly.
           </div>
 
           {/* Feature pills */}
