@@ -256,7 +256,7 @@ async def stream_answer_langchain(
 
     try:
         with get_openai_callback() as cb:
-            async for chunk in chain.astream({"context": context, "question": question}):
+            async for chunk in chain.astream({"context": context, "question": question, "history": history_messages}):
                 if t_first_token is None:
                     t_first_token = time.monotonic()
                 answer_parts.append(chunk)
