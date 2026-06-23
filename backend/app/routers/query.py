@@ -114,9 +114,7 @@ def _save_exchange(collection_id: str, user_id: str, question: str, result: dict
     if is_first:
         try:
             update["title"] = _generate_title(question)
-            print(f"[title] generated: {update['title']!r}")
-        except Exception as e:
-            print(f"[title] generation failed ({e}), using fallback")
+        except Exception:
             fallback = question[:_TITLE_MAX]
             last_space = fallback.rfind(" ")
             update["title"] = fallback[:last_space] if last_space > 15 else fallback
