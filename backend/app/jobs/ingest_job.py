@@ -29,7 +29,7 @@ from app.services.rag_service import (
     MIN_TEXT_CHARS,
     chunk_text,
     chunk_vector_id,
-    extract_pdf_text,
+    extract_pdf_multimodal,
 )
 
 UPSERT_BATCH_SIZE = 100
@@ -159,13 +159,15 @@ async def ingest_document(
                         "error": f"Could not download PDF from storage: {exc}",
                     })
                     return
-                text = extract_pdf_text(pdf_bytes)
+                # Multimodal extraction: text chunks + image description chunks.
+                # Scanned PDFs fall back to page-level vision automatically.
+                chunks = await extract_pdf_multimodal(pdf_bytes, db.storage, job_id)
             load_ms = load_t["ms"]
 
-            if len(text.strip()) < MIN_TEXT_CHARS:
+            if not chunks:
                 raise EmptyDocumentError(
-                    "PDF contains no extractable text — it may be a scanned image. "
-                    "Add a text layer (OCR) before ingesting."
+                    "PDF contains no extractable content — "
+                    "text extraction and vision analysis both yielded nothing."
                 )
         else:
             with timed() as load_t:
@@ -195,9 +197,10 @@ async def ingest_document(
                     f"No extractable text found at {url}. "
                     "The page may require JavaScript or be behind a login wall."
                 )
+            chunks = [{"text": c, "chunk_type": "text", "image_url": None}
+                      for c in chunk_text(text)]
 
-        # --- Chunk ----------------------------------------------------------
-        chunks = chunk_text(text)
+        # --- Chunk count ----------------------------------------------------
         total = len(chunks)
         _set_status(db, job_id, chunks_total=total)
 
@@ -213,10 +216,11 @@ async def ingest_document(
 
         for batch_start in range(0, total, UPSERT_BATCH_SIZE):
             batch = chunks[batch_start: batch_start + UPSERT_BATCH_SIZE]
+            batch_texts = [c["text"] for c in batch]
 
             with timed() as embed_t:
                 try:
-                    embeddings = await _embed(embeddings_client, batch)
+                    embeddings = await _embed(embeddings_client, batch_texts)
                 except Exception as exc:
                     batch_errors.append(
                         f"chunks {batch_start}–{batch_start + len(batch) - 1}: "
@@ -233,7 +237,14 @@ async def ingest_document(
                 vectors.append({
                     "id": cid,
                     "values": embedding,
-                    "metadata": {"text": chunk, "source": source, "chunk_index": idx},
+                    "metadata": {
+                        "text": chunk["text"],
+                        "source": source,
+                        "chunk_index": idx,
+                        "chunk_type": chunk.get("chunk_type", "text"),
+                        # Pinecone metadata values must be strings; use "" instead of None
+                        "image_url": chunk.get("image_url") or "",
+                    },
                 })
                 if document_id:
                     batch_chunk_rows.append({
