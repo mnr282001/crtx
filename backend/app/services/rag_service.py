@@ -90,6 +90,43 @@ def _is_scanned_pdf(doc: fitz.Document) -> bool:
     return (total / len(doc)) < _SCANNED_CHARS_PER_PAGE
 
 
+def _table_to_markdown(rows: list[list]) -> str:
+    """Serialize a PyMuPDF table (list of rows) to a GFM markdown table string."""
+    if not rows:
+        return ""
+    clean = [[str(c).strip() if c is not None else "" for c in row] for row in rows]
+    clean = [r for r in clean if any(c for c in r)]
+    if not clean:
+        return ""
+    col_count = max(len(r) for r in clean)
+    clean = [r + [""] * (col_count - len(r)) for r in clean]
+    lines = [
+        "| " + " | ".join(clean[0]) + " |",
+        "| " + " | ".join(["---"] * col_count) + " |",
+    ]
+    for row in clean[1:]:
+        lines.append("| " + " | ".join(row) + " |")
+    return "\n".join(lines)
+
+
+def _page_text_excluding_tables(page: fitz.Page, table_rects: list) -> str:
+    """Return page text, skipping blocks that overlap >50% with a detected table region."""
+    if not table_rects:
+        return page.get_text()
+    parts = []
+    for block in page.get_text("blocks"):
+        if block[6] != 0:
+            continue
+        brect = fitz.Rect(block[:4])
+        block_area = brect.get_area()
+        if block_area == 0:
+            continue
+        if any((brect & tr).get_area() / block_area > 0.5 for tr in table_rects):
+            continue
+        parts.append(block[4])
+    return "\n".join(parts)
+
+
 def _describe_image_vision_sync(image_bytes: bytes, ext: str, client: OpenAI) -> str:
     """Call the vision model synchronously and return a description string."""
     mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
@@ -142,7 +179,7 @@ async def extract_pdf_multimodal(
     Native PDFs: text is chunked normally; embedded images are described by the
     vision model and stored in Supabase.
 
-    Scanned PDFs (little/no extractable text): each page is rendered at 100 DPI
+    Scanned PDFs (little/no extractable text): each page is rendered at 150 DPI
     and described by the vision model (page-level fallback).
     """
     client = get_openai_client()
@@ -152,7 +189,7 @@ async def extract_pdf_multimodal(
     if _is_scanned_pdf(doc):
         for page in doc:
             try:
-                mat = fitz.Matrix(100 / 72, 100 / 72)
+                mat = fitz.Matrix(150 / 72, 150 / 72)
                 pixmap = page.get_pixmap(matrix=mat, colorspace=fitz.csRGB)
                 jpeg_bytes = pixmap.tobytes("jpeg")
                 desc = await asyncio.to_thread(
@@ -166,8 +203,26 @@ async def extract_pdf_multimodal(
             except Exception:
                 continue
     else:
-        full_text = "".join(page.get_text() for page in doc)
-        for chunk in chunk_text(full_text):
+        non_table_parts: list[str] = []
+
+        for page in doc:
+            try:
+                tabs = page.find_tables()
+                table_rects = []
+                for tab in tabs.tables:
+                    md = _table_to_markdown(tab.extract())
+                    if not md:
+                        continue
+                    table_rects.append(tab.bbox)
+                    table_text = f"[Table, Page {page.number + 1}]\n{md}"
+                    table_chunks = chunk_text(table_text) if len(table_text) > CHUNK_SIZE else [table_text]
+                    for chunk in table_chunks:
+                        result.append({"text": chunk, "chunk_type": "text", "image_url": None})
+                non_table_parts.append(_page_text_excluding_tables(page, table_rects))
+            except Exception:
+                non_table_parts.append(page.get_text())
+
+        for chunk in chunk_text("\n\n".join(non_table_parts)):
             result.append({"text": chunk, "chunk_type": "text", "image_url": None})
 
         seen_xrefs: set[int] = set()
