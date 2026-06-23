@@ -1,7 +1,8 @@
 import type { PipelineConfigValue } from "./components/PipelineConfig";
 import { supabase } from "./lib/supabase";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const _apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+const BASE_URL = _apiUrl.startsWith("http") ? _apiUrl : `https://${_apiUrl}`;
 
 async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
