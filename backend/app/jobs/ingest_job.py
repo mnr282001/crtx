@@ -24,7 +24,7 @@ from app.config import (
     SUPABASE_URL,
 )
 from app.db.vector_store import get_index
-from app.observability import logger, timed
+from app.observability import log_ingest, timed
 from app.services.rag_service import (
     MIN_TEXT_CHARS,
     chunk_text,
@@ -145,7 +145,7 @@ async def ingest_document(
                 except Exception as exc:
                     _set_status(db, job_id, status="failed",
                                 error_message=f"Could not download PDF from storage: {exc}")
-                    logger.info({
+                    log_ingest({
                         "event": "rag.ingest.complete",
                         "job_id": job_id,
                         "collection_id": collection_id,
@@ -174,7 +174,7 @@ async def ingest_document(
                 except Exception as exc:
                     _set_status(db, job_id, status="failed",
                                 error_message=f"Could not fetch URL after 3 attempts: {exc}")
-                    logger.info({
+                    log_ingest({
                         "event": "rag.ingest.complete",
                         "job_id": job_id,
                         "collection_id": collection_id,
@@ -276,7 +276,7 @@ async def ingest_document(
         # --- Final status --------------------------------------------------
         if not batch_errors:
             _set_status(db, job_id, status="succeeded", chunks_processed=total)
-            logger.info({
+            log_ingest({
                 "event": "rag.ingest.complete",
                 "job_id": job_id,
                 "collection_id": collection_id,
@@ -294,7 +294,7 @@ async def ingest_document(
                 db, job_id, status="failed",
                 error_message=error_msg,
             )
-            logger.info({
+            log_ingest({
                 "event": "rag.ingest.complete",
                 "job_id": job_id,
                 "collection_id": collection_id,
@@ -316,7 +316,7 @@ async def ingest_document(
                 db, job_id, status="partial",
                 error_message=error_msg,
             )
-            logger.info({
+            log_ingest({
                 "event": "rag.ingest.complete",
                 "job_id": job_id,
                 "collection_id": collection_id,
@@ -332,7 +332,7 @@ async def ingest_document(
 
     except EmptyDocumentError as exc:
         _set_status(db, job_id, status="failed", error_message=str(exc))
-        logger.info({
+        log_ingest({
             "event": "rag.ingest.complete",
             "job_id": job_id,
             "collection_id": collection_id,
@@ -351,7 +351,7 @@ async def ingest_document(
             db, job_id, status="failed",
             error_message=f"{type(exc).__name__}: {str(exc)[:500]}",
         )
-        logger.info({
+        log_ingest({
             "event": "rag.ingest.complete",
             "job_id": job_id,
             "collection_id": collection_id,
