@@ -215,6 +215,7 @@ export default function CollectionsPage() {
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && create()}
               placeholder="New collection name…"
+              maxLength={200}
               className="flex-1 bg-zinc-900 border border-zinc-700 text-zinc-100 text-sm font-mono px-3 py-2 outline-none focus:border-amber-500/70 placeholder:text-zinc-600 transition-colors"
             />
             <button
