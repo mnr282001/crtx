@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -127,6 +128,9 @@ def query(request: QueryRequest, background_tasks: BackgroundTasks, user: dict =
         raise HTTPException(status_code=403, detail="Access denied")
 
     config = _get_collection_config(request.collection_id)
+    config["request_id"] = str(uuid.uuid4())
+    config["user_id"] = user["sub"]
+    config["collection_id"] = request.collection_id
 
     result = ask_question_langchain(
         request.question,

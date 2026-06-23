@@ -1,6 +1,7 @@
 import time
 from typing import Optional
 
+from langchain_community.callbacks import get_openai_callback
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -11,6 +12,7 @@ from pinecone.exceptions import PineconeApiException
 
 from app.config import EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, TOP_K
 from app.db.vector_store import get_index
+from app.observability import log_query, timed
 from app.services.rag_service import raise_openai_http_error, raise_pinecone_http_error
 
 
@@ -18,6 +20,8 @@ _RAG_PROMPT = ChatPromptTemplate.from_messages([
     ("system", "Answer the user's question only using the provided context."),
     ("user", "Context:\n{context}\n\nQuestion: {question}"),
 ])
+
+_MODEL = "gpt-4o-mini"
 
 
 def _embed_query(question: str) -> list:
@@ -28,9 +32,12 @@ def _embed_query(question: str) -> list:
         raise_openai_http_error(e)
 
 
-def _retrieve(question: str, namespace: str, retrieval_strategy: str, top_k: int) -> list:
+def _retrieve(question: str, namespace: str, retrieval_strategy: str, top_k: int) -> tuple:
+    """Returns (matches, embedding_ms, pinecone_ms)."""
     index = get_index()
-    q_vec = _embed_query(question)
+
+    with timed() as embed_t:
+        q_vec = _embed_query(question)
 
     fetch_k = top_k * 3 if retrieval_strategy == "mmr" else top_k
     include_values = retrieval_strategy == "mmr"
@@ -44,10 +51,11 @@ def _retrieve(question: str, namespace: str, retrieval_strategy: str, top_k: int
     if namespace:
         kwargs["namespace"] = namespace
 
-    try:
-        results = index.query(**kwargs)
-    except PineconeApiException as e:
-        raise_pinecone_http_error(e)
+    with timed() as pinecone_t:
+        try:
+            results = index.query(**kwargs)
+        except PineconeApiException as e:
+            raise_pinecone_http_error(e)
 
     matches = results["matches"]
 
@@ -58,7 +66,7 @@ def _retrieve(question: str, namespace: str, retrieval_strategy: str, top_k: int
     else:
         matches = matches[:top_k]
 
-    return matches
+    return matches, embed_t["ms"], pinecone_t["ms"]
 
 
 def _apply_mmr(matches: list, query_vec: list, top_k: int, lambda_mult: float = 0.5) -> list:
@@ -102,22 +110,45 @@ def ask_question_langchain(question: str, namespace: str = "", config: Optional[
     config = config or {}
     retrieval_strategy = config.get("retrieval_strategy", "similarity")
     top_k = config.get("top_k", TOP_K)
+    request_id = config.get("request_id", "")
+    user_id = config.get("user_id", "")
+    collection_id = config.get("collection_id", "")
 
-    t0 = time.monotonic()
-    matches = _retrieve(question, namespace, retrieval_strategy, top_k)
-    retrieval_ms = int((time.monotonic() - t0) * 1000)
+    t_total = time.monotonic()
+
+    matches, embedding_ms, pinecone_ms = _retrieve(question, namespace, retrieval_strategy, top_k)
 
     context = "\n\n".join(m["metadata"]["text"] for m in matches)
 
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    llm = ChatOpenAI(model=_MODEL)
     chain = _RAG_PROMPT | llm | StrOutputParser()
 
-    t1 = time.monotonic()
-    try:
-        answer = chain.invoke({"context": context, "question": question})
-    except OpenAIError as e:
-        raise_openai_http_error(e)
-    generation_ms = int((time.monotonic() - t1) * 1000)
+    with timed() as gen_t:
+        with get_openai_callback() as cb:
+            try:
+                answer = chain.invoke({"context": context, "question": question})
+            except OpenAIError as e:
+                raise_openai_http_error(e)
+
+    total_ms = int((time.monotonic() - t_total) * 1000)
+
+    log_query({
+        "event": "rag.query.complete",
+        "request_id": request_id,
+        "collection_id": collection_id,
+        "user_id": user_id,
+        "retrieval_strategy": retrieval_strategy,
+        "top_k": top_k,
+        "embedding_latency_ms": embedding_ms,
+        "retrieval_latency_ms": pinecone_ms,
+        "generation_latency_ms": gen_t["ms"],
+        "total_latency_ms": total_ms,
+        "num_chunks_retrieved": len(matches),
+        "retrieval_scores": [round(m["score"], 4) for m in matches],
+        "prompt_tokens": cb.prompt_tokens,
+        "completion_tokens": cb.completion_tokens,
+        "model": _MODEL,
+    })
 
     return {
         "answer": answer,
@@ -130,6 +161,7 @@ def ask_question_langchain(question: str, namespace: str = "", config: Optional[
             }
             for m in matches
         ],
-        "_retrieval_ms": retrieval_ms,
-        "_generation_ms": generation_ms,
+        "_embedding_ms": embedding_ms,
+        "_retrieval_ms": embedding_ms + pinecone_ms,
+        "_generation_ms": gen_t["ms"],
     }

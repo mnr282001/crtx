@@ -1,5 +1,6 @@
 import asyncio
 import requests.exceptions
+import time
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -23,6 +24,7 @@ from app.config import (
     SUPABASE_URL,
 )
 from app.db.vector_store import get_index
+from app.observability import logger, timed
 from app.services.rag_service import (
     MIN_TEXT_CHARS,
     chunk_text,
@@ -129,28 +131,65 @@ async def ingest_document(
     db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
     _set_status(db, job_id, status="processing")
 
+    t_total = time.monotonic()
+    load_ms = 0
+    total_embed_ms = 0
+    total_upsert_ms = 0
+
     try:
         # --- Load -----------------------------------------------------------
         if source_type == "pdf":
-            try:
-                pdf_bytes = await _download_storage(db.storage, storage_path)
-            except Exception as exc:
-                _set_status(db, job_id, status="failed",
-                            error_message=f"Could not download PDF from storage: {exc}")
-                return
-            text = extract_pdf_text(pdf_bytes)
+            with timed() as load_t:
+                try:
+                    pdf_bytes = await _download_storage(db.storage, storage_path)
+                except Exception as exc:
+                    _set_status(db, job_id, status="failed",
+                                error_message=f"Could not download PDF from storage: {exc}")
+                    logger.info({
+                        "event": "rag.ingest.complete",
+                        "job_id": job_id,
+                        "collection_id": collection_id,
+                        "source": source,
+                        "load_latency_ms": load_t["ms"],
+                        "chunk_count": 0,
+                        "embedding_latency_ms": 0,
+                        "upsert_latency_ms": 0,
+                        "total_latency_ms": int((time.monotonic() - t_total) * 1000),
+                        "success": False,
+                        "error": f"Could not download PDF from storage: {exc}",
+                    })
+                    return
+                text = extract_pdf_text(pdf_bytes)
+            load_ms = load_t["ms"]
+
             if len(text.strip()) < MIN_TEXT_CHARS:
                 raise EmptyDocumentError(
                     "PDF contains no extractable text — it may be a scanned image. "
                     "Add a text layer (OCR) before ingesting."
                 )
         else:
-            try:
-                text = await _fetch_url(url)
-            except Exception as exc:
-                _set_status(db, job_id, status="failed",
-                            error_message=f"Could not fetch URL after 3 attempts: {exc}")
-                return
+            with timed() as load_t:
+                try:
+                    text = await _fetch_url(url)
+                except Exception as exc:
+                    _set_status(db, job_id, status="failed",
+                                error_message=f"Could not fetch URL after 3 attempts: {exc}")
+                    logger.info({
+                        "event": "rag.ingest.complete",
+                        "job_id": job_id,
+                        "collection_id": collection_id,
+                        "source": source,
+                        "load_latency_ms": load_t["ms"],
+                        "chunk_count": 0,
+                        "embedding_latency_ms": 0,
+                        "upsert_latency_ms": 0,
+                        "total_latency_ms": int((time.monotonic() - t_total) * 1000),
+                        "success": False,
+                        "error": f"Could not fetch URL after 3 attempts: {exc}",
+                    })
+                    return
+            load_ms = load_t["ms"]
+
             if len(text.strip()) < MIN_TEXT_CHARS:
                 raise EmptyDocumentError(
                     f"No extractable text found at {url}. "
@@ -175,14 +214,16 @@ async def ingest_document(
         for batch_start in range(0, total, UPSERT_BATCH_SIZE):
             batch = chunks[batch_start: batch_start + UPSERT_BATCH_SIZE]
 
-            try:
-                embeddings = await _embed(embeddings_client, batch)
-            except Exception as exc:
-                batch_errors.append(
-                    f"chunks {batch_start}–{batch_start + len(batch) - 1}: "
-                    f"embedding failed: {str(exc)[:200]}"
-                )
-                continue
+            with timed() as embed_t:
+                try:
+                    embeddings = await _embed(embeddings_client, batch)
+                except Exception as exc:
+                    batch_errors.append(
+                        f"chunks {batch_start}–{batch_start + len(batch) - 1}: "
+                        f"embedding failed: {str(exc)[:200]}"
+                    )
+                    continue
+            total_embed_ms += embed_t["ms"]
 
             vectors: list[dict] = []
             batch_chunk_rows: list[dict] = []
@@ -203,14 +244,16 @@ async def ingest_document(
                         "source": source,
                     })
 
-            try:
-                await _upsert(index, vectors, collection_id)
-            except Exception as exc:
-                batch_errors.append(
-                    f"chunks {batch_start}–{batch_start + len(batch) - 1}: "
-                    f"Pinecone upsert failed: {str(exc)[:200]}"
-                )
-                continue
+            with timed() as upsert_t:
+                try:
+                    await _upsert(index, vectors, collection_id)
+                except Exception as exc:
+                    batch_errors.append(
+                        f"chunks {batch_start}–{batch_start + len(batch) - 1}: "
+                        f"Pinecone upsert failed: {str(exc)[:200]}"
+                    )
+                    continue
+            total_upsert_ms += upsert_t["ms"]
 
             processed += len(batch)
             successful_chunk_rows.extend(batch_chunk_rows)
@@ -233,26 +276,92 @@ async def ingest_document(
         # --- Final status --------------------------------------------------
         if not batch_errors:
             _set_status(db, job_id, status="succeeded", chunks_processed=total)
+            logger.info({
+                "event": "rag.ingest.complete",
+                "job_id": job_id,
+                "collection_id": collection_id,
+                "source": source,
+                "load_latency_ms": load_ms,
+                "chunk_count": total,
+                "embedding_latency_ms": total_embed_ms,
+                "upsert_latency_ms": total_upsert_ms,
+                "total_latency_ms": int((time.monotonic() - t_total) * 1000),
+                "success": True,
+            })
         elif processed == 0:
+            error_msg = "; ".join(batch_errors)
             _set_status(
                 db, job_id, status="failed",
-                error_message="; ".join(batch_errors),
+                error_message=error_msg,
             )
+            logger.info({
+                "event": "rag.ingest.complete",
+                "job_id": job_id,
+                "collection_id": collection_id,
+                "source": source,
+                "load_latency_ms": load_ms,
+                "chunk_count": total,
+                "embedding_latency_ms": total_embed_ms,
+                "upsert_latency_ms": total_upsert_ms,
+                "total_latency_ms": int((time.monotonic() - t_total) * 1000),
+                "success": False,
+                "error": error_msg,
+            })
         else:
+            error_msg = (
+                f"Partial success ({processed}/{total} chunks ingested). "
+                + "; ".join(batch_errors)
+            )
             _set_status(
                 db, job_id, status="partial",
-                error_message=(
-                    f"Partial success ({processed}/{total} chunks ingested). "
-                    + "; ".join(batch_errors)
-                ),
+                error_message=error_msg,
             )
+            logger.info({
+                "event": "rag.ingest.complete",
+                "job_id": job_id,
+                "collection_id": collection_id,
+                "source": source,
+                "load_latency_ms": load_ms,
+                "chunk_count": total,
+                "embedding_latency_ms": total_embed_ms,
+                "upsert_latency_ms": total_upsert_ms,
+                "total_latency_ms": int((time.monotonic() - t_total) * 1000),
+                "success": False,
+                "error": error_msg,
+            })
 
     except EmptyDocumentError as exc:
         _set_status(db, job_id, status="failed", error_message=str(exc))
+        logger.info({
+            "event": "rag.ingest.complete",
+            "job_id": job_id,
+            "collection_id": collection_id,
+            "source": source,
+            "load_latency_ms": load_ms,
+            "chunk_count": 0,
+            "embedding_latency_ms": 0,
+            "upsert_latency_ms": 0,
+            "total_latency_ms": int((time.monotonic() - t_total) * 1000),
+            "success": False,
+            "error": str(exc),
+        })
 
     except Exception as exc:
         _set_status(
             db, job_id, status="failed",
             error_message=f"{type(exc).__name__}: {str(exc)[:500]}",
         )
+        logger.info({
+            "event": "rag.ingest.complete",
+            "job_id": job_id,
+            "collection_id": collection_id,
+            "source": source,
+            "load_latency_ms": load_ms,
+            "chunk_count": 0,
+            "embedding_latency_ms": total_embed_ms,
+            "upsert_latency_ms": total_upsert_ms,
+            "total_latency_ms": int((time.monotonic() - t_total) * 1000),
+            "success": False,
+            "error": f"{type(exc).__name__}: {str(exc)[:500]}",
+        })
         raise
