@@ -53,19 +53,61 @@ export async function getIngestJob(jobId: string): Promise<IngestJob> {
   return res.json();
 }
 
-export async function queryQuestion(
+export interface StreamSource {
+  source: string;
+  chunk_index: number;
+  text: string;
+  score: number;
+}
+
+export async function queryQuestionStream(
   question: string,
-  collectionId = "",
-  pipeline = "",
-  sessionId = ""
-) {
+  collectionId: string,
+  pipeline: string,
+  sessionId: string,
+  onMetadata: (data: { sources: StreamSource[]; embedding_latency_ms: number; retrieval_latency_ms: number }) => void,
+  onToken: (token: string) => void,
+  onDone: (data: { generation_latency_ms: number; time_to_first_token_ms: number }) => void,
+  onError: (message: string) => void,
+  signal?: AbortSignal,
+): Promise<void> {
   const res = await fetch(`${BASE_URL}/query/`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await authHeaders()) },
     body: JSON.stringify({ question, collection_id: collectionId, pipeline, session_id: sessionId }),
+    signal,
   });
   if (!res.ok) throw new Error(await res.text());
-  return res.json();
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE events are separated by double newlines
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+
+    for (const block of events) {
+      if (!block.trim()) continue;
+      let eventType = "";
+      let eventData = "";
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+        if (line.startsWith("data: ")) eventData = line.slice(6);
+      }
+      if (!eventData) continue;
+      const payload = JSON.parse(eventData);
+      if (eventType === "metadata") onMetadata(payload);
+      else if (eventType === "token") onToken(payload.token);
+      else if (eventType === "done") onDone(payload);
+      else if (eventType === "error") onError(payload.message);
+    }
+  }
 }
 
 export async function listCollections() {
