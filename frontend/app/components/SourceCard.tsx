@@ -7,6 +7,8 @@ interface Source {
   chunk_index: number;
   text: string;
   score: number;
+  chunk_type?: "text" | "image_description";
+  image_url?: string | null;
 }
 
 export default function SourceCard({ source }: { source: Source }) {
@@ -27,9 +29,15 @@ export default function SourceCard({ source }: { source: Source }) {
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800/50 transition-colors duration-100 cursor-pointer"
       >
-        <span className="text-zinc-600 shrink-0 w-6 text-right">
-          #{source.chunk_index}
-        </span>
+        {source.chunk_type === "image_description" ? (
+          <span className="text-zinc-500 text-[10px] shrink-0 border border-zinc-700 px-1 py-px">
+            IMG
+          </span>
+        ) : (
+          <span className="text-zinc-600 shrink-0 w-6 text-right">
+            #{source.chunk_index}
+          </span>
+        )}
         <span className="text-zinc-400 truncate flex-1">{source.source}</span>
         <span className={`border px-1.5 py-0.5 shrink-0 ${badge}`}>
           {pct}%
@@ -40,7 +48,14 @@ export default function SourceCard({ source }: { source: Source }) {
       </button>
 
       {expanded && (
-        <div className="border-t border-zinc-800 px-3 py-3">
+        <div className="border-t border-zinc-800 px-3 py-3 space-y-2">
+          {source.chunk_type === "image_description" && source.image_url && (
+            <img
+              src={source.image_url}
+              alt="Referenced figure"
+              className="max-w-full rounded border border-zinc-700"
+            />
+          )}
           <p className="text-zinc-400 leading-6 whitespace-pre-wrap break-words">
             {source.text}
           </p>
