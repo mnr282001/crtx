@@ -22,3 +22,6 @@ CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 200))
 TOP_K = int(os.getenv("TOP_K", 5))
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+
+VISION_MODEL = os.getenv("VISION_MODEL", "gpt-4o")
+MIN_IMAGE_BYTES = int(os.getenv("MIN_IMAGE_BYTES", 5000))
