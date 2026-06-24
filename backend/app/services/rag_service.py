@@ -3,6 +3,7 @@ import base64
 import fitz
 import hashlib
 import os
+from typing import Optional
 from urllib.parse import urlparse
 from fastapi import HTTPException
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -150,7 +151,7 @@ def _describe_image_vision_sync(image_bytes: bytes, ext: str, client: OpenAI) ->
     return resp.choices[0].message.content
 
 
-async def _upload_image(storage, job_id: str, xref: int, ext: str, image_bytes: bytes) -> str | None:
+async def _upload_image(storage, job_id: str, xref: int, ext: str, image_bytes: bytes) -> Optional[str]:
     """Upload image bytes to the Supabase 'images' bucket and return a public URL."""
     path = f"{job_id}/{xref}.{ext}"
     mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
