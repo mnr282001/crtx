@@ -123,6 +123,20 @@ export default function ClosingCTA() {
           <p className="text-xs font-mono text-zinc-800">
             Document Intelligence Platform
           </p>
+          <div className="flex gap-6">
+            <Link
+              href="/privacy"
+              className="text-xs font-mono text-zinc-700 hover:text-zinc-400 transition-colors"
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/terms"
+              className="text-xs font-mono text-zinc-700 hover:text-zinc-400 transition-colors"
+            >
+              Terms
+            </Link>
+          </div>
         </div>
       </footer>
     </>
