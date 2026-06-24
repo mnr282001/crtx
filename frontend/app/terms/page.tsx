@@ -75,7 +75,7 @@ const sections = [
 
         <h3>3.3 Account Security</h3>
         <p>
-          You must notify us immediately at <a href="mailto:security@crtx.chat">security@crtx.chat</a> if you suspect
+          You must notify us immediately at <a href="mailto:onboarding@vesselapplications.com">onboarding@vesselapplications.com</a> if you suspect
           unauthorized access to your account. We are not liable for any loss or damage arising from unauthorized use
           of your credentials where you have failed to maintain adequate security or to notify us promptly.
         </p>
@@ -376,7 +376,7 @@ const sections = [
         <h3>13.2 Informal Resolution</h3>
         <p>
           Before initiating formal proceedings, you agree to contact us at{" "}
-          <a href="mailto:legal@crtx.chat">legal@crtx.chat</a> and attempt to resolve the dispute informally for at
+          <a href="mailto:onboarding@vesselapplications.com">onboarding@vesselapplications.com</a> and attempt to resolve the dispute informally for at
           least 30 days.
         </p>
 
@@ -455,7 +455,7 @@ const sections = [
         <p>For questions about these Terms, contact us:</p>
         <ul>
           <li>
-            Email: <a href="mailto:legal@crtx.chat">legal@crtx.chat</a>
+            Email: <a href="mailto:onboarding@vesselapplications.com">onboarding@vesselapplications.com</a>
           </li>
           <li>Website: crtx.chat</li>
         </ul>

@@ -208,7 +208,7 @@ const sections = [
           No method of transmission over the internet or electronic storage is 100% secure. While we strive to protect
           your information, we cannot guarantee absolute security. If you become aware of a security vulnerability,
           please contact us immediately at{" "}
-          <a href="mailto:security@crtx.chat">security@crtx.chat</a>.
+          <a href="mailto:onboarding@vesselapplications.com">onboarding@vesselapplications.com</a>.
         </p>
       </>
     ),
@@ -254,7 +254,7 @@ const sections = [
         </p>
         <p>
           To exercise any of these rights, email us at{" "}
-          <a href="mailto:privacy@crtx.chat">privacy@crtx.chat</a>. We will respond within the timeframe required by
+          <a href="mailto:onboarding@vesselapplications.com">onboarding@vesselapplications.com</a>. We will respond within the timeframe required by
           applicable law (typically 30 days). We may need to verify your identity before fulfilling a request.
         </p>
       </>
@@ -282,7 +282,7 @@ const sections = [
         <p>
           The Service is not directed to children under the age of 16. We do not knowingly collect personal
           information from children under 16. If you believe we have collected information from a child under 16,
-          contact us at <a href="mailto:privacy@crtx.chat">privacy@crtx.chat</a> and we will delete it promptly.
+          contact us at <a href="mailto:onboarding@vesselapplications.com">onboarding@vesselapplications.com</a> and we will delete it promptly.
         </p>
       </>
     ),
@@ -314,7 +314,7 @@ const sections = [
         </p>
         <ul>
           <li>
-            Email: <a href="mailto:privacy@crtx.chat">privacy@crtx.chat</a>
+            Email: <a href="mailto:onboarding@vesselapplications.com">onboarding@vesselapplications.com</a>
           </li>
           <li>Website: crtx.chat</li>
         </ul>
