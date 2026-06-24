@@ -30,8 +30,11 @@ from app.services.rag_service import (
     chunk_text,
     chunk_vector_id,
     extract_csv,
+    extract_docx,
     extract_excel,
     extract_pdf_multimodal,
+    extract_pptx,
+    extract_text_file,
 )
 
 UPSERT_BATCH_SIZE = 100
@@ -171,7 +174,7 @@ async def ingest_document(
                     "PDF contains no extractable content — "
                     "text extraction and vision analysis both yielded nothing."
                 )
-        elif source_type in ("csv", "xlsx"):
+        elif source_type in ("csv", "xlsx", "docx", "pptx", "txt", "md"):
             with timed() as load_t:
                 try:
                     file_bytes = await _download_storage(db.storage, storage_path)
@@ -192,21 +195,22 @@ async def ingest_document(
                         "error": f"Could not download file from storage: {exc}",
                     })
                     return
+                _extractor = {
+                    "csv": extract_csv,
+                    "xlsx": extract_excel,
+                    "docx": extract_docx,
+                    "pptx": extract_pptx,
+                    "txt": extract_text_file,
+                    "md": extract_text_file,
+                }[source_type]
                 loop = asyncio.get_event_loop()
-                if source_type == "csv":
-                    chunks = await loop.run_in_executor(
-                        None, extract_csv, file_bytes, source
-                    )
-                else:
-                    chunks = await loop.run_in_executor(
-                        None, extract_excel, file_bytes, source
-                    )
+                chunks = await loop.run_in_executor(None, _extractor, file_bytes, source)
             load_ms = load_t["ms"]
 
             if not chunks:
                 raise EmptyDocumentError(
-                    f"No extractable data found in {source}. "
-                    "The file may be empty or contain no data rows."
+                    f"No extractable content found in {source}. "
+                    "The file may be empty."
                 )
         else:
             with timed() as load_t:

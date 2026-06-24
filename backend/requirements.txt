@@ -18,3 +18,5 @@ requests
 beautifulsoup4
 sentry-sdk
 openpyxl
+python-docx
+python-pptx

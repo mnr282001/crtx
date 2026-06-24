@@ -17,6 +17,10 @@ _EXTENSION_TO_SOURCE_TYPE = {
     ".pdf": "pdf",
     ".csv": "csv",
     ".xlsx": "xlsx",
+    ".docx": "docx",
+    ".pptx": "pptx",
+    ".txt": "txt",
+    ".md": "md",
 }
 
 _MIME_TO_SOURCE_TYPE = {
@@ -24,12 +28,20 @@ _MIME_TO_SOURCE_TYPE = {
     "text/csv": "csv",
     "application/csv": "csv",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+    "text/plain": "txt",
+    "text/markdown": "md",
 }
 
 _SOURCE_TYPE_TO_MIME = {
     "pdf": "application/pdf",
     "csv": "text/csv",
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "txt": "text/plain",
+    "md": "text/markdown",
 }
 
 

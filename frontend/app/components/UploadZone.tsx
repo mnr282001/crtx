@@ -82,7 +82,11 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
     async (incoming: File[]) => {
       const supported = incoming.filter((f) => {
         const name = f.name.toLowerCase();
-        return name.endsWith(".pdf") || name.endsWith(".csv") || name.endsWith(".xlsx");
+        return (
+          name.endsWith(".pdf") || name.endsWith(".csv") || name.endsWith(".xlsx") ||
+          name.endsWith(".docx") || name.endsWith(".pptx") ||
+          name.endsWith(".txt") || name.endsWith(".md")
+        );
       });
       if (!supported.length) return;
 
@@ -181,7 +185,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.csv,.xlsx,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".pdf,.csv,.xlsx,.docx,.pptx,.txt,.md,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,text/markdown"
           multiple
           onChange={onChange}
           className="sr-only"
@@ -198,7 +202,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
 
         <div className="text-center space-y-0.5">
           <p className="text-xs font-mono text-zinc-400 uppercase tracking-[0.2em]">
-            {dragging ? "Release to ingest" : "Drop PDF, CSV, or XLSX files"}
+            {dragging ? "Release to ingest" : "Drop files — PDF, DOCX, PPTX, CSV, XLSX, TXT, MD"}
           </p>
           <p className="text-xs font-mono text-zinc-700">or click to browse</p>
         </div>

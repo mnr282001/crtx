@@ -382,6 +382,106 @@ def extract_excel(file_bytes: bytes, filename: str) -> list[dict]:
     return result
 
 
+def extract_docx(file_bytes: bytes, filename: str) -> list[dict]:
+    """Extract Word document content preserving headings and tables."""
+    import io
+    from docx import Document
+    from docx.table import Table
+    from docx.text.paragraph import Paragraph
+
+    doc = Document(io.BytesIO(file_bytes))
+    parts: list[str] = []
+
+    for child in doc.element.body:
+        tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+        if tag == "p":
+            para = Paragraph(child, doc)
+            text = para.text.strip()
+            if not text:
+                continue
+            style = para.style.name if para.style else ""
+            parts.append(f"## {text}" if "Heading" in style else text)
+        elif tag == "tbl":
+            table = Table(child, doc)
+            rows = [[cell.text.strip() for cell in row.cells] for row in table.rows]
+            md = _table_to_markdown(rows)
+            if md:
+                parts.append(md)
+
+    full_text = "\n\n".join(parts)
+    if not full_text.strip():
+        return []
+
+    result: list[dict] = [{"text": f"File: {filename}\nType: Word document", "chunk_type": "text", "image_url": None}]
+    for chunk in chunk_text(full_text):
+        result.append({"text": chunk, "chunk_type": "text", "image_url": None})
+    return result
+
+
+def extract_pptx(file_bytes: bytes, filename: str) -> list[dict]:
+    """Extract PowerPoint slides as individual chunks, including speaker notes and tables."""
+    import io
+    from pptx import Presentation
+
+    prs = Presentation(io.BytesIO(file_bytes))
+    result: list[dict] = [{
+        "text": f"File: {filename}\nType: PowerPoint presentation\nSlides: {len(prs.slides)}",
+        "chunk_type": "text",
+        "image_url": None,
+    }]
+
+    for i, slide in enumerate(prs.slides, 1):
+        parts: list[str] = [f"[Slide {i}]"]
+
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    text = para.text.strip()
+                    if text:
+                        parts.append(text)
+            if shape.has_table:
+                rows = [[cell.text.strip() for cell in row.cells] for row in shape.table.rows]
+                md = _table_to_markdown(rows)
+                if md:
+                    parts.append(md)
+
+        try:
+            if slide.has_notes_slide:
+                notes = slide.notes_slide.notes_text_frame.text.strip()
+                if notes:
+                    parts.append(f"[Speaker notes: {notes}]")
+        except Exception:
+            pass
+
+        slide_text = "\n".join(parts)
+        if len(slide_text) <= len(f"[Slide {i}]"):
+            continue
+
+        if len(slide_text) > CHUNK_SIZE:
+            for chunk in chunk_text(slide_text):
+                result.append({"text": chunk, "chunk_type": "text", "image_url": None})
+        else:
+            result.append({"text": slide_text, "chunk_type": "text", "image_url": None})
+
+    return result
+
+
+def extract_text_file(file_bytes: bytes, filename: str) -> list[dict]:
+    """Extract plain text and markdown files."""
+    try:
+        text = file_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        text = file_bytes.decode("latin-1")
+
+    if not text.strip():
+        return []
+
+    result: list[dict] = []
+    for chunk in chunk_text(text):
+        result.append({"text": chunk, "chunk_type": "text", "image_url": None})
+    return result
+
+
 def chunk_text(text):
 
     splitter = RecursiveCharacterTextSplitter(
