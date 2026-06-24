@@ -7,7 +7,7 @@ import {
   type DragEvent,
   type ChangeEvent,
 } from "react";
-import { getIngestJob, ingestPdf, ingestUrl } from "../api";
+import { getIngestJob, ingestFile, ingestUrl } from "../api";
 
 interface FileEntry {
   id: string;
@@ -80,10 +80,13 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
 
   const process = useCallback(
     async (incoming: File[]) => {
-      const pdfs = incoming.filter((f) => f.type === "application/pdf");
-      if (!pdfs.length) return;
+      const supported = incoming.filter((f) => {
+        const name = f.name.toLowerCase();
+        return name.endsWith(".pdf") || name.endsWith(".csv") || name.endsWith(".xlsx");
+      });
+      if (!supported.length) return;
 
-      const entries: FileEntry[] = pdfs.map((file) => ({
+      const entries: FileEntry[] = supported.map((file) => ({
         id: `${file.name}-${Date.now()}-${Math.random()}`,
         name: file.name,
         status: "uploading",
@@ -95,9 +98,8 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
       for (const entry of entries) {
         const { id, name } = entry;
         try {
-          // Upload the file — server returns immediately with a job_id
-          const { job_id } = await ingestPdf(
-            pdfs.find((f) => f.name === name)!,
+          const { job_id } = await ingestFile(
+            supported.find((f) => f.name === name)!,
             collectionId,
           );
           updateEntry(id, { status: "queued", progress: 2 });
@@ -179,7 +181,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,application/pdf"
+          accept=".pdf,.csv,.xlsx,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           multiple
           onChange={onChange}
           className="sr-only"
@@ -196,7 +198,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
 
         <div className="text-center space-y-0.5">
           <p className="text-xs font-mono text-zinc-400 uppercase tracking-[0.2em]">
-            {dragging ? "Release to ingest" : "Drop PDF files"}
+            {dragging ? "Release to ingest" : "Drop PDF, CSV, or XLSX files"}
           </p>
           <p className="text-xs font-mono text-zinc-700">or click to browse</p>
         </div>

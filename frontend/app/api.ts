@@ -24,7 +24,7 @@ export interface IngestJob {
   updated_at: string;
 }
 
-export async function ingestPdf(file: File, collectionId = ""): Promise<{ job_id: string }> {
+export async function ingestFile(file: File, collectionId = ""): Promise<{ job_id: string }> {
   const body = new FormData();
   body.append("file", file);
   const url = collectionId

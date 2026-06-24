@@ -29,6 +29,8 @@ from app.services.rag_service import (
     MIN_TEXT_CHARS,
     chunk_text,
     chunk_vector_id,
+    extract_csv,
+    extract_excel,
     extract_pdf_multimodal,
 )
 
@@ -168,6 +170,43 @@ async def ingest_document(
                 raise EmptyDocumentError(
                     "PDF contains no extractable content — "
                     "text extraction and vision analysis both yielded nothing."
+                )
+        elif source_type in ("csv", "xlsx"):
+            with timed() as load_t:
+                try:
+                    file_bytes = await _download_storage(db.storage, storage_path)
+                except Exception as exc:
+                    _set_status(db, job_id, status="failed",
+                                error_message=f"Could not download file from storage: {exc}")
+                    log_ingest({
+                        "event": "rag.ingest.complete",
+                        "job_id": job_id,
+                        "collection_id": collection_id,
+                        "source": source,
+                        "load_latency_ms": load_t["ms"],
+                        "chunk_count": 0,
+                        "embedding_latency_ms": 0,
+                        "upsert_latency_ms": 0,
+                        "total_latency_ms": int((time.monotonic() - t_total) * 1000),
+                        "success": False,
+                        "error": f"Could not download file from storage: {exc}",
+                    })
+                    return
+                loop = asyncio.get_event_loop()
+                if source_type == "csv":
+                    chunks = await loop.run_in_executor(
+                        None, extract_csv, file_bytes, source
+                    )
+                else:
+                    chunks = await loop.run_in_executor(
+                        None, extract_excel, file_bytes, source
+                    )
+            load_ms = load_t["ms"]
+
+            if not chunks:
+                raise EmptyDocumentError(
+                    f"No extractable data found in {source}. "
+                    "The file may be empty or contain no data rows."
                 )
         else:
             with timed() as load_t:

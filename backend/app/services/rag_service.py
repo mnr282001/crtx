@@ -263,6 +263,125 @@ async def extract_pdf_multimodal(
     return result
 
 
+def _tabular_row_chunks(
+    filename: str,
+    sheet_label: Optional[str],
+    columns: list[str],
+    rows: list[dict],
+) -> list[dict]:
+    """
+    Serialize tabular rows into RAG-ready chunks where each chunk carries full
+    column context so it is independently meaningful when retrieved.
+
+    Each row is serialized as "Row N: Col: val, Col: val, ..." and batches are
+    kept under CHUNK_SIZE so the LLM receives a coherent slice of the table.
+    """
+    if not rows:
+        return []
+
+    sheet_info = f" | Sheet: {sheet_label}" if sheet_label else ""
+    header = f"[{filename}{sheet_info} | Columns: {', '.join(columns)}]"
+
+    result: list[dict] = []
+    current_rows: list[str] = []
+    current_len = len(header) + 1
+
+    for i, row in enumerate(rows, 1):
+        parts = [f"{col}: {row.get(col)}" for col in columns
+                 if row.get(col) is not None and str(row.get(col)).strip()]
+        if not parts:
+            continue
+        row_text = f"Row {i}: " + ", ".join(parts)
+
+        if current_rows and current_len + len(row_text) + 1 > CHUNK_SIZE:
+            result.append({
+                "text": header + "\n" + "\n".join(current_rows),
+                "chunk_type": "text",
+                "image_url": None,
+            })
+            current_rows = []
+            current_len = len(header) + 1
+
+        current_rows.append(row_text)
+        current_len += len(row_text) + 1
+
+    if current_rows:
+        result.append({
+            "text": header + "\n" + "\n".join(current_rows),
+            "chunk_type": "text",
+            "image_url": None,
+        })
+
+    return result
+
+
+def extract_csv(file_bytes: bytes, filename: str) -> list[dict]:
+    """Extract CSV data into RAG chunks with a schema summary + row-level chunks."""
+    import csv
+    import io
+
+    try:
+        text = file_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        text = file_bytes.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text))
+    rows = list(reader)
+    if not rows:
+        return []
+
+    columns = [c for c in (reader.fieldnames or []) if c is not None]
+    schema_text = (
+        f"File: {filename}\n"
+        f"Type: CSV spreadsheet\n"
+        f"Rows: {len(rows)}\n"
+        f"Columns ({len(columns)}): {', '.join(columns)}"
+    )
+    result: list[dict] = [{"text": schema_text, "chunk_type": "text", "image_url": None}]
+    result.extend(_tabular_row_chunks(filename, None, columns, rows))
+    return result
+
+
+def extract_excel(file_bytes: bytes, filename: str) -> list[dict]:
+    """Extract all sheets from an XLSX file into RAG chunks."""
+    import io
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
+    result: list[dict] = []
+
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        all_rows = [
+            r for r in ws.iter_rows(values_only=True)
+            if any(c is not None and str(c).strip() for c in r)
+        ]
+
+        if len(all_rows) < 2:
+            continue
+
+        columns = [
+            str(h).strip() if h is not None else f"Column{i + 1}"
+            for i, h in enumerate(all_rows[0])
+        ]
+        data_rows = [
+            {col: val for col, val in zip(columns, row)}
+            for row in all_rows[1:]
+        ]
+
+        schema_text = (
+            f"File: {filename} | Sheet: {sheet_name}\n"
+            f"Type: Excel spreadsheet\n"
+            f"Rows: {len(data_rows)}\n"
+            f"Columns ({len(columns)}): {', '.join(columns)}"
+        )
+        result.append({"text": schema_text, "chunk_type": "text", "image_url": None})
+        result.extend(_tabular_row_chunks(filename, sheet_name, columns, data_rows))
+
+    wb.close()
+    return result
+
+
 def chunk_text(text):
 
     splitter = RecursiveCharacterTextSplitter(

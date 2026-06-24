@@ -1,6 +1,7 @@
 import ipaddress
 import os
 import uuid
+from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse as _urlparse
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
@@ -11,6 +12,33 @@ from app.config import SUPABASE_URL, SUPABASE_SECRET_KEY
 from app.auth import get_current_user
 
 router = APIRouter()
+
+_EXTENSION_TO_SOURCE_TYPE = {
+    ".pdf": "pdf",
+    ".csv": "csv",
+    ".xlsx": "xlsx",
+}
+
+_MIME_TO_SOURCE_TYPE = {
+    "application/pdf": "pdf",
+    "text/csv": "csv",
+    "application/csv": "csv",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+}
+
+_SOURCE_TYPE_TO_MIME = {
+    "pdf": "application/pdf",
+    "csv": "text/csv",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
+
+def _detect_source_type(content_type: Optional[str], filename: Optional[str]) -> Optional[str]:
+    # Extension-first: browsers sometimes send wrong MIME types for CSV/XLSX
+    ext = Path(filename).suffix.lower() if filename else ""
+    if ext in _EXTENSION_TO_SOURCE_TYPE:
+        return _EXTENSION_TO_SOURCE_TYPE[ext]
+    return _MIME_TO_SOURCE_TYPE.get(content_type or "")
 
 _db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 
@@ -112,17 +140,20 @@ async def ingest(
     if not _can_ingest(collection_id, user["sub"]):
         raise HTTPException(status_code=403, detail="Ingest permission required")
 
-    if file.content_type not in ("application/pdf",):
-        raise HTTPException(status_code=415, detail="Only PDF files are accepted")
+    file_name = os.path.basename(file.filename or "document")
+    source_type = _detect_source_type(file.content_type, file_name)
 
-    MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MB
-    pdf_bytes = await file.read()
-    if len(pdf_bytes) > MAX_PDF_BYTES:
+    if source_type is None:
+        raise HTTPException(
+            status_code=415,
+            detail="Unsupported file type. Accepted formats: PDF, CSV, XLSX",
+        )
+
+    MAX_FILE_BYTES = 50 * 1024 * 1024  # 50 MB
+    file_bytes = await file.read()
+    if len(file_bytes) > MAX_FILE_BYTES:
         raise HTTPException(status_code=413, detail="File exceeds 50 MB limit")
 
-    file_name = os.path.basename(file.filename or "document.pdf")
-
-    # Always upload to storage so the worker can download it
     storage_path = (
         f"{collection_id}/{file_name}" if collection_id
         else f"{user['sub']}/{file_name}"
@@ -130,8 +161,8 @@ async def ingest(
     try:
         _db.storage.from_("documents").upload(
             path=storage_path,
-            file=pdf_bytes,
-            file_options={"content-type": "application/pdf", "upsert": "true"},
+            file=file_bytes,
+            file_options={"content-type": _SOURCE_TYPE_TO_MIME[source_type], "upsert": "true"},
         )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Storage upload failed: {exc}")
@@ -141,7 +172,7 @@ async def ingest(
         result = _db.table("collection_documents").insert({
             "collection_id": collection_id,
             "name": file_name,
-            "source_type": "pdf",
+            "source_type": source_type,
             "storage_path": storage_path,
             "uploaded_by": user["sub"],
         }).execute()
@@ -152,7 +183,7 @@ async def ingest(
         user_id=user["sub"],
         collection_id=collection_id,
         document_id=document_id,
-        source_type="pdf",
+        source_type=source_type,
         source=file_name,
         storage_path=storage_path,
     )
