@@ -81,6 +81,11 @@ export const metadata: Metadata = {
     shortcut: "/crtx-icon.png",
     apple: "/crtx-icon.png",
   },
+  verification: {
+    other: {
+      "msvalidate.01": "65B3F19B727D95ACDA5EFCF64251E311",
+    },
+  },
 };
 
 const jsonLd = {
