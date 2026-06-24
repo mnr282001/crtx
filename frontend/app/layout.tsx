@@ -76,11 +76,6 @@ export const metadata: Metadata = {
       "Ask anything. Get cited answers from your documents — instantly.",
     images: ["/opengraph-image"],
   },
-  icons: {
-    icon: "/crtx-icon.png",
-    shortcut: "/crtx-icon.png",
-    apple: "/crtx-icon.png",
-  },
   verification: {
     other: {
       "msvalidate.01": "65B3F19B727D95ACDA5EFCF64251E311",
