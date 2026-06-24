@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { listDocuments, deleteDocument } from "../api";
 import ConfirmModal from "./ConfirmModal";
+import { useAuth } from "../context/auth";
 
 interface CollectionDocument {
   id: string;
@@ -19,6 +20,7 @@ interface DocumentListProps {
 }
 
 export default function DocumentList({ collectionId, refreshKey = 0 }: DocumentListProps) {
+  const { loading: authLoading } = useAuth();
   const [docs, setDocs] = useState<CollectionDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,8 +41,8 @@ export default function DocumentList({ collectionId, refreshKey = 0 }: DocumentL
   }, [collectionId]);
 
   useEffect(() => {
-    load();
-  }, [load, refreshKey]);
+    if (!authLoading) load();
+  }, [load, refreshKey, authLoading]);
 
   const doDelete = async () => {
     if (!confirmDoc) return;
