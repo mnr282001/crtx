@@ -26,6 +26,25 @@ interface UploadZoneProps {
 
 const POLL_INTERVAL_MS = 1500;
 
+const ACCEPTED_EXTENSIONS = [
+  ".pdf", ".csv", ".xlsx", ".docx", ".pptx", ".txt", ".md",
+];
+
+const ACCEPT_ATTR =
+  ".pdf,.csv,.xlsx,.docx,.pptx,.txt,.md," +
+  "application/pdf," +
+  "text/csv," +
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet," +
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document," +
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation," +
+  "text/plain," +
+  "text/markdown";
+
+function isSupported(file: File): boolean {
+  const name = file.name.toLowerCase();
+  return ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
+
 async function pollJob(
   jobId: string,
   onUpdate: (entry: Partial<FileEntry>) => void,
@@ -52,7 +71,6 @@ async function pollJob(
       return;
     }
 
-    // queued or processing — update progress bar if we have totals
     if (job.chunks_total && job.chunks_total > 0) {
       const pct = Math.round((job.chunks_processed / job.chunks_total) * 90) + 5;
       onUpdate({
@@ -72,22 +90,34 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
   const [dragging, setDragging] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [urlInput, setUrlInput] = useState("");
+  const [rejection, setRejection] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const rejectionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateEntry = useCallback((id: string, patch: Partial<FileEntry>) => {
     setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   }, []);
 
+  const showRejection = useCallback((message: string) => {
+    setRejection(message);
+    if (rejectionTimer.current) clearTimeout(rejectionTimer.current);
+    rejectionTimer.current = setTimeout(() => setRejection(null), 4000);
+  }, []);
+
   const process = useCallback(
     async (incoming: File[]) => {
-      const supported = incoming.filter((f) => {
-        const name = f.name.toLowerCase();
-        return (
-          name.endsWith(".pdf") || name.endsWith(".csv") || name.endsWith(".xlsx") ||
-          name.endsWith(".docx") || name.endsWith(".pptx") ||
-          name.endsWith(".txt") || name.endsWith(".md")
+      const supported = incoming.filter(isSupported);
+      const rejected = incoming.filter((f) => !isSupported(f));
+
+      if (rejected.length > 0) {
+        const names = rejected.map((f) => f.name).join(", ");
+        showRejection(
+          rejected.length === 1
+            ? `"${rejected[0].name}" is not a supported file type.`
+            : `${rejected.length} files aren't supported: ${names}`
         );
-      });
+      }
+
       if (!supported.length) return;
 
       const entries: FileEntry[] = supported.map((file) => ({
@@ -107,7 +137,6 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
             collectionId,
           );
           updateEntry(id, { status: "queued", progress: 2 });
-
           await pollJob(job_id, (patch) => updateEntry(id, patch));
           onIngested?.();
         } catch (err) {
@@ -119,7 +148,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
         }
       }
     },
-    [collectionId, onIngested, updateEntry],
+    [collectionId, onIngested, updateEntry, showRejection],
   );
 
   const submitUrl = useCallback(async () => {
@@ -129,7 +158,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
       const parsed = new URL(url);
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error();
     } catch {
-      alert("Please enter a valid http or https URL.");
+      showRejection("Please enter a valid http or https URL.");
       return;
     }
     setUrlInput("");
@@ -143,7 +172,6 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
     try {
       const { job_id } = await ingestUrl(url, collectionId);
       updateEntry(id, { status: "queued", progress: 2 });
-
       await pollJob(job_id, (patch) => updateEntry(id, patch));
       onIngested?.();
     } catch (err) {
@@ -153,7 +181,7 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
         error: err instanceof Error ? err.message : "Ingest failed",
       });
     }
-  }, [urlInput, collectionId, onIngested, updateEntry]);
+  }, [urlInput, collectionId, onIngested, updateEntry, showRejection]);
 
   const onDragOver = (e: DragEvent) => { e.preventDefault(); setDragging(true); };
   const onDragLeave = () => setDragging(false);
@@ -176,23 +204,23 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={[
-          "relative cursor-pointer border border-dashed p-6 sm:p-8 flex flex-col items-center justify-center gap-3 select-none transition-all duration-150",
+          "relative cursor-pointer border border-dashed p-5 flex flex-col items-center justify-center gap-2.5 select-none transition-all duration-150",
           dragging
-            ? "border-sky-400 bg-sky-400/5 shadow-[inset_0_0_40px_rgba(56,189,248,0.06)]"
-            : "border-zinc-700 bg-zinc-900/40 hover:border-zinc-500",
+            ? "border-sky-400 bg-sky-400/5 shadow-[inset_0_0_30px_rgba(56,189,248,0.05)]"
+            : "border-zinc-800 bg-zinc-900/40 hover:border-zinc-700",
         ].join(" ")}
       >
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.csv,.xlsx,.docx,.pptx,.txt,.md,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,text/markdown"
+          accept={ACCEPT_ATTR}
           multiple
           onChange={onChange}
           className="sr-only"
         />
 
-        <div className={`transition-colors ${dragging ? "text-sky-400" : "text-zinc-600"}`}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+        <div className={`transition-colors ${dragging ? "text-sky-400" : "text-zinc-700"}`}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <polyline points="14 2 14 8 20 8" />
             <line x1="12" y1="18" x2="12" y2="12" />
@@ -200,13 +228,22 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
           </svg>
         </div>
 
-        <div className="text-center space-y-0.5">
-          <p className="text-xs font-mono text-zinc-400 uppercase tracking-[0.2em]">
-            {dragging ? "Release to ingest" : "Drop files — PDF, DOCX, PPTX, CSV, XLSX, TXT, MD"}
-          </p>
-          <p className="text-xs font-mono text-zinc-700">or click to browse</p>
-        </div>
+        <p className={`text-[11px] font-mono uppercase tracking-[0.18em] transition-colors ${dragging ? "text-sky-400" : "text-zinc-500"}`}>
+          {dragging ? "Release to upload" : "Drop files or click to browse"}
+        </p>
       </div>
+
+      {/* Rejection message */}
+      {rejection && (
+        <div className="flex items-start gap-2 border border-red-400/20 bg-red-400/5 px-3 py-2">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0 mt-0.5">
+            <circle cx="6" cy="6" r="5" stroke="#f87171" strokeWidth="1" />
+            <line x1="6" y1="3.5" x2="6" y2="6.5" stroke="#f87171" strokeWidth="1.2" strokeLinecap="round" />
+            <circle cx="6" cy="8.5" r="0.6" fill="#f87171" />
+          </svg>
+          <p className="text-[11px] font-mono text-red-400/80 leading-relaxed">{rejection}</p>
+        </div>
+      )}
 
       {/* URL input */}
       <div className="flex gap-1">
@@ -216,20 +253,20 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
           onChange={(e) => setUrlInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submitUrl()}
           placeholder="https://example.com/page"
-          className="flex-1 bg-zinc-900 border border-zinc-700 text-zinc-300 placeholder-zinc-600 font-mono text-xs px-3 py-2 outline-none focus:border-zinc-500"
+          className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-300 placeholder-zinc-700 font-mono text-xs px-3 py-2 outline-none focus:border-zinc-600 transition-colors"
         />
         <button
           onClick={submitUrl}
           disabled={!urlInput.trim()}
-          className="bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 disabled:opacity-30 disabled:cursor-not-allowed font-mono text-xs px-3 py-2 transition-colors shrink-0"
+          className="bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed font-mono text-xs px-3 py-2 transition-colors shrink-0"
         >
-          Ingest URL
+          Ingest
         </button>
       </div>
 
-      {/* File list */}
+      {/* File progress list */}
       {files.length > 0 && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 mt-1">
           {files.map((entry) => (
             <FileRow key={entry.id} entry={entry} />
           ))}
@@ -240,26 +277,27 @@ export default function UploadZone({ onIngested, collectionId = "" }: UploadZone
 }
 
 function FileRow({ entry }: { entry: FileEntry }) {
-  const isActive = entry.status === "uploading" || entry.status === "queued" || entry.status === "processing";
+  const isActive =
+    entry.status === "uploading" ||
+    entry.status === "queued" ||
+    entry.status === "processing";
   const isDone = entry.status === "done";
   const isPartial = entry.status === "partial";
   const isError = entry.status === "error";
 
   const statusLabel = () => {
-    if (entry.status === "uploading") return <span className="text-sky-400 shrink-0 tabular-nums">{Math.round(entry.progress)}%</span>;
-    if (entry.status === "queued") return <span className="text-zinc-500 shrink-0">queued</span>;
-    if (entry.status === "processing") {
-      const pct = Math.round(entry.progress);
-      const total = entry.chunksTotal;
-      return (
-        <span className="text-sky-400 shrink-0 tabular-nums">
-          {total ? `${pct}%` : `${pct}%`}
-        </span>
-      );
-    }
-    if (isDone) return <span className="text-emerald-400 shrink-0">✓ {entry.chunks} chunks</span>;
-    if (isPartial) return <span className="text-sky-300 shrink-0">~ {entry.chunks} chunks</span>;
-    if (isError) return <span className="text-red-400 shrink-0">✗ failed</span>;
+    if (entry.status === "uploading")
+      return <span className="text-sky-400 tabular-nums">{Math.round(entry.progress)}%</span>;
+    if (entry.status === "queued")
+      return <span className="text-zinc-600">queued</span>;
+    if (entry.status === "processing")
+      return <span className="text-sky-400 tabular-nums">{Math.round(entry.progress)}%</span>;
+    if (isDone)
+      return <span className="text-emerald-400">✓ {entry.chunks}c</span>;
+    if (isPartial)
+      return <span className="text-sky-300">~ {entry.chunks}c</span>;
+    if (isError)
+      return <span className="text-red-400">failed</span>;
   };
 
   const barColor = isDone
@@ -271,12 +309,11 @@ function FileRow({ entry }: { entry: FileEntry }) {
     : "bg-sky-400";
 
   return (
-    <div className="border border-zinc-800 bg-zinc-900 p-2.5 font-mono text-xs">
+    <div className="border border-zinc-800 bg-zinc-900/60 px-2.5 py-2 font-mono text-xs">
       <div className="flex items-center justify-between gap-2 mb-1.5">
-        <span className="text-zinc-300 truncate flex-1">{entry.name}</span>
-        {statusLabel()}
+        <span className="text-zinc-400 truncate flex-1 text-[11px]">{entry.name}</span>
+        <span className="text-[10px] shrink-0">{statusLabel()}</span>
       </div>
-
       <div className="h-px bg-zinc-800">
         {(isActive || isDone || isPartial || isError) && (
           <div
@@ -285,9 +322,8 @@ function FileRow({ entry }: { entry: FileEntry }) {
           />
         )}
       </div>
-
       {(isError || isPartial) && entry.error && (
-        <p className={`mt-1.5 text-xs leading-tight truncate ${isPartial ? "text-sky-300" : "text-red-400"}`}>
+        <p className={`mt-1.5 text-[10px] leading-tight truncate ${isPartial ? "text-sky-300/70" : "text-red-400/70"}`}>
           {entry.error}
         </p>
       )}
