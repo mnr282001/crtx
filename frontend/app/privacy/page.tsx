@@ -2,8 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — CRTX",
+  title: "Privacy Policy",
   description: "How CRTX collects, uses, and protects your personal information.",
+  alternates: {
+    canonical: "https://crtx.chat/privacy",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 const EFFECTIVE_DATE = "June 23, 2026";

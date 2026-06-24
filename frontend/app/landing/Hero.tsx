@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Hero() {
   return (
-    <section className="relative flex items-center min-h-[calc(100vh-44px)] overflow-hidden bg-zinc-950 px-6">
+    <section id="hero" aria-label="CRTX Document Intelligence" className="relative flex items-center min-h-[calc(100vh-44px)] overflow-hidden bg-zinc-950 px-6">
       {/* Dot grid */}
       <div
         className="absolute inset-0 pointer-events-none"

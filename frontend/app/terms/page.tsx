@@ -2,8 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — CRTX",
+  title: "Terms of Service",
   description: "The terms that govern your use of the CRTX document intelligence platform.",
+  alternates: {
+    canonical: "https://crtx.chat/terms",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 const EFFECTIVE_DATE = "June 23, 2026";

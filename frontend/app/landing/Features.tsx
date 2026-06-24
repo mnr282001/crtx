@@ -23,14 +23,14 @@ const FEATURES = [
 
 export default function Features() {
   return (
-    <section className="border-t border-zinc-800 py-24 px-6 bg-zinc-950">
+    <section id="features" aria-labelledby="features-heading" className="border-t border-zinc-800 py-24 px-6 bg-zinc-950">
       <div className="max-w-7xl mx-auto flex flex-col gap-14">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-px h-5 bg-sky-400 shrink-0" />
-          <span className="text-xs font-mono text-zinc-500 uppercase tracking-[0.3em]">
+          <div className="w-px h-5 bg-sky-400 shrink-0" aria-hidden="true" />
+          <h2 id="features-heading" className="text-xs font-mono text-zinc-500 uppercase tracking-[0.3em]">
             Capabilities
-          </span>
+          </h2>
         </div>
 
         {/* Grid */}
