@@ -8,7 +8,7 @@
 
 <br />
 
-**A production-grade RAG platform. Ingest any document, query it with AI, and measure answer quality.**
+**A production-grade RAG platform. Ingest documents in any format, query them with AI, and measure answer quality.**
 
 [![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -33,15 +33,16 @@ CRTX is a **multi-user Retrieval-Augmented Generation (RAG) platform** built for
 
 Most AI chat tools are black boxes. CRTX is different: every response comes with **cited sources**, and every interaction is scored for **faithfulness** (did the answer match the retrieved context?) and **context relevance** (were the right documents retrieved?). You can watch quality trends over time on a built-in evaluation dashboard.
 
-**In plain English:** upload your PDFs or paste URLs, ask questions in natural language, get answers backed by your own content, and see exactly where each answer came from, including figures and tables.
+**In plain English:** upload your documents (PDF, Word, PowerPoint, Excel, CSV, plain text, Markdown) or paste URLs, ask questions in natural language, get answers backed by your own content, and see exactly where each answer came from, including figures and tables.
 
 ---
 
 ## Features
 
 ### For end users
-- **Chat with your documents**: ask anything about PDFs or web pages you've uploaded
-- **Multimodal PDFs**: embedded images are described by GPT-4o vision and become searchable; tables are extracted as structured markdown
+- **Chat with your documents**: ask anything about documents or web pages you've uploaded
+- **Broad file type support**: ingest PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx), CSV, plain text (.txt), and Markdown (.md) — all formats are chunked and embedded for semantic search
+- **Multimodal PDFs**: embedded images are described by GPT-4o vision and become searchable; tables are extracted as structured markdown; scanned PDFs fall back to page-level vision OCR
 - **Source transparency**: every answer cites the exact chunks it drew from, with inline image rendering for figure sources
 - **Streaming responses**: answers stream token-by-token via SSE; sources appear before the first token
 - **Persistent sessions**: conversation history is saved per collection
@@ -128,25 +129,45 @@ Embed question ──► Pinecone similarity/MMR/threshold search ──► Top-
                                                        └──► Eval dashboard
 ```
 
-### Data flow for PDF ingestion
+### Data flow for document ingestion
 
 ```
-PDF upload / URL
+File upload / URL
      │
      ▼
 Arq background job
      │
-     ├── Native PDF?
-     │       ├── Extract tables → GFM markdown chunks
-     │       ├── Extract body text (excluding table regions)
-     │       └── Extract images → GPT-4o vision description
-     │                               └── Upload to Supabase Storage (images bucket)
+     ├── PDF
+     │     ├── Native PDF?
+     │     │     ├── Extract tables → GFM markdown chunks
+     │     │     ├── Extract body text (excluding table regions)
+     │     │     └── Extract images → GPT-4o vision description
+     │     │                           └── Upload to Supabase Storage (images bucket)
+     │     └── Scanned PDF (< 50 chars/page avg)?
+     │               └── Render each page at 150 DPI → GPT-4o vision description
      │
-     └── Scanned PDF (< 50 chars/page avg)?
-             └── Render each page at 150 DPI → GPT-4o vision description
+     ├── Word (.docx)
+     │     └── Extract headings, paragraphs, and tables (→ GFM markdown)
+     │           in document order via element tree traversal
+     │
+     ├── PowerPoint (.pptx)
+     │     └── One chunk per slide: title + body text + tables + speaker notes
+     │
+     ├── Excel (.xlsx)
+     │     └── Per sheet: schema summary chunk + row chunks
+     │           each row → "Col: val, Col: val, ..." with column header context
+     │
+     ├── CSV
+     │     └── Schema summary chunk + row chunks (UTF-8 / latin-1 fallback)
+     │
+     ├── Plain text (.txt) / Markdown (.md)
+     │     └── Decode and chunk directly; markdown syntax preserved
+     │
+     └── URL
+           └── Fetch via WebBaseLoader → extract page text
      │
      ▼
-Chunk text (RecursiveCharacterTextSplitter)
+Chunk text (RecursiveCharacterTextSplitter, default 1000 chars / 200 overlap)
      │
      ▼
 Embed in batches of 100 (text-embedding-3-small, 1024-dim)
@@ -177,7 +198,7 @@ Log to ingest_logs table
 | Vision | OpenAI GPT-4o (image description, scanned-PDF OCR) |
 | Embeddings | OpenAI text-embedding-3-small (1024-dim) |
 | RAG framework | LangChain |
-| Document parsing | PyMuPDF (PDF text + tables + images), BeautifulSoup4 (web) |
+| Document parsing | PyMuPDF (PDF text + tables + images), python-docx (Word), python-pptx (PowerPoint), openpyxl (Excel), csv stdlib (CSV), BeautifulSoup4 (web) |
 | Background jobs | Arq + Redis (batched upserts, tenacity retries) |
 | Observability | Structured JSON logging to query_logs / ingest_logs Supabase tables |
 | Deployment | Railway (backend), Vercel (frontend) |
@@ -307,7 +328,7 @@ All endpoints require `Authorization: Bearer <token>` unless noted.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/ingest/` | Upload a PDF (multipart, max 50 MB) |
+| `POST` | `/ingest/` | Upload a document (multipart, max 50 MB; accepted: PDF, DOCX, PPTX, XLSX, CSV, TXT, MD) |
 | `POST` | `/ingest/url` | Ingest from a public HTTP/HTTPS URL |
 | `GET` | `/ingest/jobs/{job_id}` | Poll background job status (`queued` / `processing` / `succeeded` / `partial` / `failed`) |
 
@@ -437,6 +458,7 @@ crtx/
 - [ ] Docker Compose for one-command local setup
 - [x] Streaming responses (SSE)
 - [x] Multi-modal support (images and tables in PDFs)
+- [x] Multi-format ingestion (PDF, DOCX, PPTX, XLSX, CSV, TXT, MD)
 - [ ] Re-ranking layer (Cohere / cross-encoder)
 - [ ] SAML / SSO for enterprise teams
 - [ ] Webhook notifications on ingestion completion
