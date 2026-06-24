@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 
 from openai import OpenAI
 from supabase import create_client
@@ -59,9 +60,9 @@ def score_and_log(
         f"[Chunk {i + 1}] {s.get('text', '')}" for i, s in enumerate(sources)
     )
 
-    faithfulness: float | None = None
-    context_relevance: float | None = None
-    scorer_error: str | None = None
+    faithfulness: Optional[float] = None
+    context_relevance: Optional[float] = None
+    scorer_error: Optional[str] = None
 
     try:
         r = _client.chat.completions.create(
